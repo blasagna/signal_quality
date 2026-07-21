@@ -21,7 +21,11 @@ def test_join_preserves_row_index(faulty_rec):
 
     assert joined.index.equals(single[0].index)
     assert joined.index.equals(single[1].index)
-    assert not joined[["rms", "line_ratio"]].isna().any().any()
+    # Alignment, not absence of NaN: a metric may legitimately decline to
+    # produce a value (a dead channel has no spectral ratio). What must not
+    # happen is NaN appearing because the join reindexed something.
+    assert joined["rms"].notna().all()
+    assert joined["line_ratio"].isna().equals(single[1]["line_ratio"].isna())
     # Values must survive the join untouched.
     np.testing.assert_allclose(joined["rms"].to_numpy(),
                                single[0]["rms"].to_numpy())

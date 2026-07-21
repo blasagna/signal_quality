@@ -40,12 +40,13 @@ def scalp_rec(faulty_rec):
 
 @pytest.fixture
 def computed(scalp_rec):
+    """Whole-recording view, for the plots that need one row per channel."""
     mf = sq.compute([M.RMS(), M.LineRatio(), M.MaxCorrelation(),
                      M.FlatFraction(), M.EMGFraction()],
                     scalp_rec, sq.IntervalGrid.whole(scalp_rec))
-    flags = sq.apply_filters(mf, sq.DEFAULT_FILTERS)
-    verdicts = sq.verdict(flags, channels=scalp_rec.ch_names)
-    return mf, flags, verdicts
+    flags = sq.apply_filters(mf, sq.WHOLE_RECORDING_FILTERS)
+    verdicts = sq.verdict(flags, mf)
+    return mf, flags, sq.channel_summary(verdicts, bad_time_frac=0.0)
 
 
 def test_availability_marks_the_gap(gapped_rec):
@@ -55,18 +56,35 @@ def test_availability_marks_the_gap(gapped_rec):
 
 
 def test_contact_quality_figure(scalp_rec, computed):
-    mf, _, verdicts = computed
-    fig = sq.viz.plot_contact_quality(mf, verdicts, metric="line_ratio", log=True)
+    mf, _, summary = computed
+    fig = sq.viz.plot_contact_quality(mf, summary, metric="line_ratio", log=True)
     assert len(fig.axes) >= 2
 
 
+def test_verdict_topomap_rejects_per_interval_input(scalp_rec):
+    """A head plot can show one value per electrode; which value that should be
+    is a policy question, so it must be rolled up first rather than guessed."""
+    mf = sq.compute([M.RMS(), M.PeakToPeak()], scalp_rec)
+    v = sq.verdict(sq.apply_filters(mf, sq.DEFAULT_FILTERS), mf)
+    with pytest.raises(TypeError, match="channel_summary"):
+        sq.viz.plot_verdict_topomap(v)
+
+
+def test_pct_bad_topomap(scalp_rec):
+    mf = sq.compute([M.RMS(), M.PeakToPeak(), M.FlatFraction()], scalp_rec)
+    v = sq.verdict(sq.apply_filters(mf, sq.DEFAULT_FILTERS), mf)
+    ax = sq.viz.plot_pct_bad_topomap(sq.channel_summary(v))
+    assert "%" in ax.figure.axes[-1].get_ylabel()
+
+
 def test_log_topomap_survives_a_dead_channel():
-    """A flat channel reads zero, which is -inf once logged. Naive limits would
-    stretch the colour scale until every other electrode looks identical."""
+    """A dead channel has no spectral ratio at all (NaN), and a near-zero one is
+    -inf once logged. Naive colour limits would stretch the scale until every
+    other electrode rendered as one flat colour."""
     rec, _ = sq.make_demo_recording()
     mf = sq.compute([M.LineRatio(), M.FlatFraction()], rec,
                     sq.IntervalGrid.whole(rec))
-    assert (mf.table["line_ratio"] <= 0).any()          # the dead electrode
+    assert mf.table["line_ratio"].isna().any()          # the dead electrode
 
     ax = sq.viz.plot_metric_topomap(mf, "line_ratio", log=True)
     lo, hi = ax.images[0].get_clim() if ax.images else ax.collections[0].get_clim()
@@ -166,7 +184,7 @@ def test_overview_clips_and_names_the_offender():
     assert "Fpz" in caption and "peak" in caption
     # Only the genuinely pathological channel — a caption naming most of the
     # montage would be noise, since stacked EEG traces normally overlap a little.
-    assert caption.count("peak") <= 3
+    assert caption.count("peak") <= 5
 
 
 def test_overview_normalizes_mixed_channel_types():

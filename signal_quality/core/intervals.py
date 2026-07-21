@@ -26,6 +26,11 @@ class IntervalGrid:
     table: pd.DataFrame
     sfreq: float
 
+    #: Default flagging resolution. Quality varies within a channel — an
+    #: electrode that is clean for 25 minutes and unusable for 3 deserves a
+    #: different answer per minute, not one label for the recording.
+    DEFAULT_WINDOW = 1.0
+
     def __len__(self) -> int:
         return len(self.table)
 

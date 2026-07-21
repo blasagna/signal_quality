@@ -70,12 +70,9 @@ class ClipFraction(Metric):
     rail: int = 131071  # 2**17 - 1
 
     def compute_interval(self, ctx, i_start, i_stop):
-        counts = ctx.counts[:, i_start:i_stop]
-        m = ctx.covered[i_start:i_stop]
-        if m.any():
-            counts = counts[:, m]
-        if counts.shape[1] == 0:
-            return np.full(counts.shape[0], np.nan)
+        counts = ctx.counts_segment(i_start, i_stop)
+        if counts is None or counts.shape[1] == 0:
+            return np.full(len(ctx.ch_names), np.nan)
         return 100.0 * (np.abs(counts) >= self.rail).mean(axis=1)
 
 

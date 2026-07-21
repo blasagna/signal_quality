@@ -6,6 +6,7 @@ metric column rather than hard-coding mains pickup.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 from ..montage import place
 
@@ -84,15 +85,56 @@ def plot_metric_topomap(mf, metric: str, ax=None, log: bool = False,
     return ax
 
 
+def plot_pct_bad_topomap(summary, ax=None, cmap="RdYlGn_r", vmax=None,
+                         title=None):
+    """Percentage of covered time each electrode spent flagged bad.
+
+    Takes a :func:`~signal_quality.filters.channel_summary`. This is the
+    continuous quantity worth mapping — a binary good/bad label discards the
+    difference between an electrode that failed for ten seconds and one that
+    never worked.
+    """
+    import matplotlib.pyplot as plt
+    import mne
+
+    placed, xy, unplaced = place(summary.index)
+    if not placed:
+        raise ValueError("no channels could be given a scalp position")
+
+    v = summary.loc[placed, "pct_bad"].to_numpy(dtype=float)
+    v = np.nan_to_num(v, nan=0.0)
+    hi = float(vmax if vmax is not None else max(v.max(), 1.0))
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6.5, 6.5))
+    im, _ = mne.viz.plot_topomap(v, xy, axes=ax, show=False, cmap=cmap,
+                                 names=placed, contours=4, vlim=(0, hi))
+    cb = ax.figure.colorbar(im, ax=ax, shrink=0.65)
+    cb.set_label("% of covered time flagged bad")
+    ax.set_title(title or "Time spent bad, per electrode", fontsize=11, pad=14)
+    if unplaced:
+        ax.text(0.5, -0.07, "no standard position: " + ", ".join(unplaced),
+                transform=ax.transAxes, ha="center", fontsize=7, style="italic")
+    return ax
+
+
 def plot_verdict_topomap(verdicts, ax=None, title="Per-electrode verdict"):
     """Categorical good/marginal/bad per electrode, with the reason for each.
 
-    This is the authoritative panel: one marker per electrode, no interpolation,
-    labelled with the flags that fired.
+    Takes a :func:`~signal_quality.filters.channel_summary` (one row per
+    channel). Per-interval verdicts must be rolled up first — a head plot can
+    only show one value per electrode, and which one it should be is a policy
+    question that belongs in ``filters``, not here.
     """
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
     import mne
+
+    if isinstance(verdicts.index, pd.MultiIndex):
+        raise TypeError(
+            "plot_verdict_topomap needs one row per channel; pass "
+            "sq.channel_summary(verdicts), or plot_quality_heatmap() to see "
+            "the per-interval verdicts over time")
 
     placed, xy, unplaced = place(verdicts.index)
     if not placed:
@@ -111,7 +153,7 @@ def plot_verdict_topomap(verdicts, ax=None, title="Per-electrode verdict"):
                    edgecolors="k", linewidths=0.8, zorder=5)
         ax.text(xy[k][0], xy[k][1], ch, ha="center", va="center", fontsize=7,
                 color="w", zorder=6, fontweight="bold")
-        if row["reasons"]:
+        if row.get("reasons"):
             # Push the reason outward from centre so peripheral labels do not
             # collide with the markers.
             r = np.hypot(*xy[k]) + 1e-9

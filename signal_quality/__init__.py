@@ -18,17 +18,22 @@ applied to that table. Typical use::
 from .core.frame import MetricFrame
 from .core.intervals import IntervalGrid
 from .core.metric import Metric, compute
-from .filters import (DEFAULT_FILTERS, Filter, RobustZ, Threshold,
-                      apply_filters, verdict)
+from .filters import (DEFAULT_FILTERS, WHOLE_RECORDING_FILTERS, Filter,
+                      RobustZ, Threshold, apply_filters, bad_segments,
+                      channel_summary, verdict)
+from .export import to_annotations
 from .io.load import load
+from .report import QualityReport, assess
 from .metrics.integrity import (channel_alignment, check_integrity,
                                 coverage_gaps, timestamp_anomalies)
 from .synthetic import make_demo_recording
 from . import metrics, montage, viz
 
 __all__ = [
-    "load", "IntervalGrid", "Metric", "MetricFrame", "compute",
+    "load", "assess", "QualityReport", "IntervalGrid", "Metric", "MetricFrame", "compute",
     "Filter", "Threshold", "RobustZ", "apply_filters", "verdict",
+    "channel_summary", "bad_segments", "to_annotations",
+    "WHOLE_RECORDING_FILTERS",
     "DEFAULT_FILTERS", "check_integrity", "coverage_gaps",
     "timestamp_anomalies", "channel_alignment",
     "make_demo_recording", "metrics", "montage", "viz",

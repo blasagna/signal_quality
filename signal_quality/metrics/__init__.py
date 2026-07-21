@@ -12,7 +12,7 @@ from . import integrity
 
 #: The per-channel metric set ported from the reference EEG analysis.
 DEFAULT_METRICS = [RMS, LineRatio, EMGFraction, MaxCorrelation, FlatFraction,
-                   ClipFraction]
+                   ClipFraction, PeakToPeak]
 
 __all__ = [
     "RMS", "FlatFraction", "ClipFraction", "PeakToPeak",

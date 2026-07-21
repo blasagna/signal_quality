@@ -73,11 +73,11 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
                         with_gap: bool = True, with_stamp_fault: bool = True):
     """Build a demo :class:`~signal_quality.core.recording.Recording`.
 
-    Returns ``(rec, truth)`` where ``truth`` is a DataFrame of
-    ``(channel, injected)`` naming the fault deliberately placed on each
-    channel — the ground truth a detection run can be scored against.
+    Returns ``(rec, truth)``. ``truth`` is a **time-resolved** ground truth —
+    ``(channel, t_start, t_end, injected)`` — so detection can be scored on
+    *when* as well as *which*, which is what per-interval flagging claims to do.
 
-    Injected faults, one per mechanism the library checks:
+    Sustained faults, spanning the whole recording:
 
     ==================  ==========================================
     ``LINE_NOISE``      F9/F10/T9/T10/P9/P10 — mains pickup
@@ -86,6 +86,16 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     ``ISOLATED``        A1 shares no signal with the montage
     ``CLIPPING``        Fpz saturates the converter
     ``EMG``             F7/F8 muscle contamination
+    ==================  ==========================================
+
+    Episodic faults, bounded in time — these are the ones a per-channel verdict
+    cannot express, since the channel is perfectly usable outside its episode:
+
+    ==================  ==========================================
+    ``LINE_NOISE``      Fp1 comes loose partway through
+    ``ARTIFACT``        O1/O2/Pz movement episode, several channels at once
+    ``CLIPPING``        T4 brief saturating burst
+    ``FLAT``            P3 disconnects, then is reseated
     ==================  ==========================================
 
     Plus recording-scope faults: a mid-recording gap, and a nonmonotonic
@@ -123,17 +133,26 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
         if ch in names:
             X[names.index(ch)] += 9.0 * gain * alpha
 
-    truth = {c: [] for c in names}
+    # Ground truth is time-resolved: (channel, t_start, t_end, fault). A fault
+    # that lasts the whole recording spans [0, duration]; an episodic one spans
+    # only its episode, which is what makes per-interval detection scoreable.
+    truth = []
 
-    def mark(ch, fault):
-        truth[ch].append(fault)
+    def mark(ch, fault, t0=0.0, t1=None):
+        truth.append(dict(channel=ch, t_start=float(t0),
+                          t_end=float(duration if t1 is None else t1),
+                          injected=fault))
+
+    def span(t0, t1):
+        return slice(int(t0 * sfreq), int(t1 * sfreq))
 
     # --- injected per-channel faults ----------------------------------------
-    # Amplitudes chosen so the resulting ratios land in the same order of
-    # magnitude as a real poorly-applied electrode (a few hundred to ~1500),
-    # rather than at an implausible extreme that any threshold would catch.
-    for ch, amp in (("F9", 26.0), ("F10", 24.0), ("T9", 30.0),
-                    ("T10", 22.0), ("P9", 25.0), ("P10", 20.0)):
+    # Amplitudes chosen so the resulting line ratios land in the same range as
+    # real poorly-applied electrodes on the reference study (~11,000 against
+    # <900 for clean ones), so the demo exercises the shipped thresholds rather
+    # than a softer set of its own.
+    for ch, amp in (("F9", 78.0), ("F10", 72.0), ("T9", 90.0),
+                    ("T10", 66.0), ("P9", 75.0), ("P10", 60.0)):
         i = names.index(ch)
         X[i] += amp * np.sin(2 * np.pi * line_freq * t + rng.uniform(0, 6.28))
         mark(ch, "LINE_NOISE")
@@ -182,6 +201,48 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     mark("Fpz", "AMP_OUTLIER")
     mark("Fpz", "CLIPPING")
 
+    # --- episodic faults, the reason for flagging per interval --------------
+    # Each is bounded in time, so a per-channel verdict could only say "this
+    # electrode is suspect" while the truth is "this electrode was fine until
+    # 90 s". Episodes are placed clear of the recording gap so they are
+    # observable.
+    ep = _episodes(duration)
+
+    # An electrode that works, then comes loose and starts picking up mains.
+    # Amplitude matched to the sustained line-noise channels above: a genuinely
+    # floating electrode is an antenna, not a marginal case.
+    t0, t1 = ep["pop"]
+    i = names.index("Fp1")
+    X[i, span(t0, t1)] += 78.0 * np.sin(
+        2 * np.pi * line_freq * t[span(t0, t1)] + rng.uniform(0, 6.28))
+    mark("Fp1", "LINE_NOISE", t0, t1)
+
+    # A movement/muscle episode across several channels at once — the signature
+    # of the subject, not of any one electrode.
+    t0, t1 = ep["movement"]
+    for ch in ("O1", "O2", "Pz"):
+        i = names.index(ch)
+        seg = span(t0, t1)
+        X[i, seg] += 1.1 * X[i].std() * _band_noise(
+            rng, n, sfreq, 25.0, 45.0)[seg]
+        X[i, seg] += 220.0 * _pink(rng, 1, n, sfreq, exponent=2.0)[0][seg] / (
+            _pink(rng, 1, n, sfreq, exponent=2.0)[0].std() + 1e-12)
+        mark(ch, "ARTIFACT", t0, t1)
+
+    # A brief saturating burst: fine before and after.
+    t0, t1 = ep["burst"]
+    i = names.index("T4")
+    sl = span(t0, t1)                       # length from the slice, not recomputed:
+    w = sl.stop - sl.start                  # the two round differently
+    X[i, sl] += np.hanning(w) * (RAIL * FACTOR_UV) * 1.1
+    mark("T4", "CLIPPING", t0, t1)
+
+    # An electrode that disconnects and is reseated.
+    t0, t1 = ep["dropout"]
+    i = names.index("P3")
+    X[i, span(t0, t1)] = 0.0
+    mark("P3", "FLAT", t0, t1)
+
     # --- quantise to ADC counts, which is where clipping actually happens ----
     factor_uV = np.full(n_ch, FACTOR_UV)
     counts = np.clip(np.rint(X / factor_uV[:, None]), -RAIL, RAIL).astype(np.int32)
@@ -213,10 +274,24 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     rec = Recording(ds, None, ann, provenance, defects=[])
 
     truth_df = pd.DataFrame(
-        [(c, "+".join(sorted(set(v))) if v else "") for c, v in truth.items()],
-        columns=["channel", "injected"],
-    ).set_index("channel")
+        truth, columns=["channel", "t_start", "t_end", "injected"]
+    ).sort_values(["channel", "t_start"], ignore_index=True)
     return rec, truth_df
+
+
+def _episodes(duration: float) -> dict:
+    """Where the time-localized faults live, as fractions of the recording.
+
+    Kept clear of the gap at 0.42–0.55 so each episode is actually observable;
+    a fault injected into missing data would be untestable.
+    """
+    d = duration
+    return {
+        "movement": (0.20 * d, 0.28 * d),
+        "burst": (0.33 * d, 0.35 * d),
+        "pop": (0.62 * d, 0.78 * d),
+        "dropout": (0.85 * d, 0.95 * d),
+    }
 
 
 def _stamp_table(n, sfreq, covered):

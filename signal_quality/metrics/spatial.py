@@ -42,14 +42,32 @@ class MaxCorrelation(Metric):
     l_freq: float = 1.0
     h_freq: float = 45.0
 
+    #: A channel whose amplitude is this far below the montage's typical level
+    #: carries no signal. Correlation normalises by standard deviation, so on a
+    #: dead channel it divides by numerical residue and returns a *finite*
+    #: arbitrary value — which then propagates into other channels' maxima and
+    #: makes them depend on floating-point noise. Detected relatively, so the
+    #: rule holds whatever units the signal is in.
+    dead_rel_tol: float = 1e-9
+
     def compute_interval(self, ctx, i_start, i_stop):
         seg = ctx.segment(i_start, i_stop, band=(self.l_freq, self.h_freq))
         n_ch = seg.shape[0]
         if n_ch < 2 or seg.shape[1] < 2:
             return np.full(n_ch, np.nan)
+
+        sd = seg.std(axis=1)
+        scale = np.median(sd[np.isfinite(sd)]) if np.isfinite(sd).any() else 0.0
+        dead = ~np.isfinite(sd) | (sd <= self.dead_rel_tol * scale)
+
         with np.errstate(invalid="ignore", divide="ignore"):
             C = np.corrcoef(seg)
         C = np.nan_to_num(C, nan=0.0)
+        # A dead channel correlates with nothing, and nothing correlates with
+        # it — stated explicitly rather than left to whatever the division
+        # produced.
+        C[dead, :] = 0.0
+        C[:, dead] = 0.0
         np.fill_diagonal(C, 0.0)
         return np.abs(C).max(axis=1)
 

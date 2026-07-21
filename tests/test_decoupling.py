@@ -20,6 +20,8 @@ ALLOWED = {
     "io/load.py": "reads formats MNE supports",
     "io/xltek.py": "vendored reader; builds RawArray for its own public API",
     "core/context.py": "mne.filter.filter_data is an array function",
+    "core/blocks.py": "mne.filter.create_filter, to size block padding",
+    "export.py": "converts results into MNE Annotations",
     "core/recording.py": "to_mne() adapter, for notebook use",
     "montage.py": "standard 10-20 electrode coordinates",
     "viz/topomap.py": "mne.viz.plot_topomap, called with a plain xy array",
