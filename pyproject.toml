@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "signal_quality"
+version = "0.1.0"
+description = "Modular signal-quality metrics for physiological time series"
+requires-python = ">=3.12"
+
+[tool.hatch.build.targets.wheel]
+packages = ["signal_quality"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
