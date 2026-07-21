@@ -1,0 +1,18 @@
+[workspace]
+authors = ["Bob DiMaiolo <bdimaiolo@gmail.com>"]
+channels = ["conda-forge"]
+name = "signal_quality"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = ">=3.14.6,<3.15"
+numpy = ">=2.4.6,<3"
+mne = ">=1.12.1,<2"
+scipy = ">=1.18.0,<2"
+matplotlib = ">=3.11.1,<4"
+jupyterlab = ">=4.6.2,<5"
+pandas = ">=3.0.3,<4"
+h5py = ">=3.16.0,<4"
