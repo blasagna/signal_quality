@@ -10,6 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..core.context import MetricContext
+from ._scale import label_with_range
 
 
 def plot_good_bad_psd(rec, flags, flag: str = "LINE_NOISE", ax=None,
@@ -61,7 +62,7 @@ def plot_good_bad_psd(rec, flags, flag: str = "LINE_NOISE", ax=None,
     ax.plot([], [], color="#2e7d32", lw=0.7, alpha=0.6,
             label=f"unflagged ({len(good)})")
     ax.set_xlabel("frequency (Hz)")
-    ax.set_ylabel("power (µV²/Hz)")
+    label_with_range(ax, P[:, sel], "power (µV²/Hz)", log=True)
     ax.set_title(title or f"Spectra: worst {min(max_examples, len(bad))} of "
                           f"{len(bad)} channels flagged {flag}, vs unflagged")
     ax.legend(fontsize=8, ncol=2)
@@ -98,7 +99,7 @@ def plot_psd_examples(rec, mf, metric: str = "line_ratio", n: int = 3, ax=None):
             ax.semilogy(f[sel], P[idx[c]][sel], color="#c62828", lw=1.2,
                         label=f"{c} (worst, {per_ch[c]:.0f})")
     ax.set_xlabel("frequency (Hz)")
-    ax.set_ylabel("power (µV²/Hz)")
+    label_with_range(ax, P[:, sel], "power (µV²/Hz)", log=True)
     ax.set_title(f"Best vs worst channels by {metric}")
     ax.legend(fontsize=8, ncol=2)
     return ax

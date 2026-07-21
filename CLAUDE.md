@@ -59,6 +59,31 @@ values in the finished table. Robust-z of RMS is a *filter* (`RobustZ`) because 
 statement about a channel relative to its peers; `max_corr` is a *metric* because it needs the raw
 data.
 
+### Plotting conventions (`viz/`)
+
+Every plot must state its y scale numerically. Two helpers in `viz/_scale.py` enforce this and
+should be used by any new plot:
+
+- `label_with_range(ax, values, label)` — appends the observed data range to the y label.
+- `add_scale_bar(ax, size, unit)` — for stacked axes whose y ticks are channel names and therefore
+  carry no amplitude information.
+
+Other rules learned the hard way, each with a regression test:
+
+- **Never plot a value for an uncovered interval.** `_mask_uncovered()` blanks intervals inside a
+  gap; without it `plot_clean_fraction` drew 0% clean, which reads as total artifact — the opposite
+  of "nothing was recorded".
+- **Robust colour limits on topomaps.** A dead channel reads 0, which is −inf once logged, and
+  naive limits flatten every other electrode to one colour.
+- **`plot_overview` renders min/max envelopes**, not decimated samples, or brief excursions vanish.
+- **Normalize per channel when types are mixed** (`normalize="auto"`). EEG in µV and DC/position
+  channels in device units cannot share an absolute scale — on the reference study the DC channels
+  set the spacing and every EEG trace became a hairline. Note the trade-off: normalising by a
+  channel's own SD *hides* a saturating channel, since its SD is inflated by the saturation.
+- **Report persistently off-scale channels by clipped fraction, not peak.** Keying on peak named 37
+  of 50 channels on real data, because electrode pops are ubiquitous.
+- **Rank flagged examples by severity**, not alphabetically, so evidence plots show the worst cases.
+
 ### Recording-scope checks are separate
 
 `metrics/integrity.py` (gaps, timestamp anomalies, channel alignment) emits its own findings table
@@ -83,9 +108,29 @@ a property of the recording, and broadcasting it across every channel row would 
 
 ## Testing
 
-Synthetic fixtures in `tests/conftest.py` inject one fault each (flat, mains tone, ADC rail, bridge,
-amplitude outlier, gap, corrupt stamp tables). Note `_pink()`'s spectral slope is load-bearing: with
-shallower noise, high-frequency power dominates and every channel looks full of muscle artifact.
+Two layers of synthetic data, deliberately separate:
+
+- **`tests/conftest.py`** — minimal fixtures, one fault each, for unit tests.
+- **`signal_quality/synthetic.py`** — `make_demo_recording()`, a full 10-20 montage carrying every
+  fault at once plus a ground-truth table. Public API, and the notebook's default input.
+  `tests/test_synthetic.py` scores detection against that truth and fails if the generator drifts.
+
+Signal-model constants there are load-bearing and were tuned empirically; changing them casually
+will break detection in non-obvious ways:
+
+- **Spectral slope** (`_pink` exponent) — shallower noise puts so much power above 25 Hz that every
+  channel looks full of muscle artifact.
+- **Common/independent ratio** (0.95 / 0.30) — referential EEG correlates at ~0.9+; too little
+  shared signal and healthy channels trip `ISOLATED`.
+- **Per-site gain jitter** — without it every healthy channel has near-identical amplitude, the MAD
+  collapses, and `RobustZ` flags ordinary channels over trivial differences.
+- **EMG must be band-limited** (`_band_noise`, 25–45 Hz) — broadband noise spreads power outside the
+  measured band, so raising `emg_pct` enough would decorrelate the channel into `ISOLATED` instead.
+- **Clipping is modelled as slow excursions**, not impulses — one-sample spikes at rail magnitude
+  dominate a channel's variance so completely it also reads as uncorrelated.
+
+Some flags are legitimate *side effects*, not false positives: a dead or rail-swinging channel
+genuinely correlates with nothing, so `T5`/`Fpz` also trip `ISOLATED` (see `EXPECTED_SIDE_EFFECTS`).
 
 Real recordings are patient data and stay **outside** this repo. Do not add data files, subject
 paths, or identifiers. Notebook outputs must be cleared or de-identified before sharing.

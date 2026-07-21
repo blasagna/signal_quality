@@ -23,6 +23,7 @@ from .filters import (DEFAULT_FILTERS, Filter, RobustZ, Threshold,
 from .io.load import load
 from .metrics.integrity import (channel_alignment, check_integrity,
                                 coverage_gaps, timestamp_anomalies)
+from .synthetic import make_demo_recording
 from . import metrics, montage, viz
 
 __all__ = [
@@ -30,6 +31,6 @@ __all__ = [
     "Filter", "Threshold", "RobustZ", "apply_filters", "verdict",
     "DEFAULT_FILTERS", "check_integrity", "coverage_gaps",
     "timestamp_anomalies", "channel_alignment",
-    "metrics", "montage", "viz",
+    "make_demo_recording", "metrics", "montage", "viz",
 ]
 __version__ = "0.1.0"

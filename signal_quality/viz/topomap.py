@@ -31,13 +31,19 @@ def _short(reasons: str) -> str:
 
 
 def plot_metric_topomap(mf, metric: str, ax=None, log: bool = False,
-                        cmap: str = "RdYlGn_r", interval=None, title=None):
+                        cmap: str = "RdYlGn_r", interval=None, title=None,
+                        robust: bool = True):
     """Spatially interpolated map of one metric across the scalp.
 
     The interpolation between electrodes is illustrative — only the electrode
     locations carry measurements — so pair this with
     :func:`plot_verdict_topomap`, which shows the per-electrode calls without
     smoothing.
+
+    ``robust`` sets the colour limits from the 2nd–98th percentile rather than
+    the full range. Without it a single degenerate channel — a dead electrode
+    reads zero, which is minus infinity once logged — stretches the scale so far
+    that every other channel renders as one flat colour.
     """
     import matplotlib.pyplot as plt
     import mne
@@ -49,12 +55,26 @@ def plot_metric_topomap(mf, metric: str, ax=None, log: bool = False,
 
     v = values.loc[placed].to_numpy(dtype=float)
     if log:
-        v = np.log10(np.clip(v, 1e-12, None))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            v = np.log10(np.where(v > 0, v, np.nan))
+
+    finite = v[np.isfinite(v)]
+    if finite.size == 0:
+        raise ValueError(f"{metric!r} has no finite values to plot")
+    if robust and finite.size > 3:
+        lo, hi = np.percentile(finite, [2, 98])
+    else:
+        lo, hi = finite.min(), finite.max()
+    if lo == hi:
+        lo, hi = lo - 0.5, hi + 0.5
+    # Degenerate channels are pinned to the bottom of the scale rather than
+    # dropped, so their electrode still appears on the map.
+    v = np.clip(np.nan_to_num(v, nan=lo, neginf=lo, posinf=hi), lo, hi)
 
     if ax is None:
         _, ax = plt.subplots(figsize=(6, 6))
     im, _ = mne.viz.plot_topomap(v, xy, axes=ax, show=False, cmap=cmap,
-                                 names=placed, contours=4)
+                                 names=placed, contours=4, vlim=(lo, hi))
     ax.set_title(title or f"{metric}{' (log10)' if log else ''}", fontsize=11)
     cb = ax.figure.colorbar(im, ax=ax, shrink=0.65)
     cb.set_label(f"log10({metric})" if log else metric)
