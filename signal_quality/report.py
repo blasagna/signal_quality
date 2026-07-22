@@ -28,8 +28,14 @@ import pandas as pd
 
 from .core.intervals import IntervalGrid
 from .core.metric import compute
-from .filters import (DEFAULT_FILTERS, WHOLE_RECORDING_FILTERS, apply_filters,
-                      bad_segments, channel_summary, verdict)
+from .filters import (
+    DEFAULT_FILTERS,
+    WHOLE_RECORDING_FILTERS,
+    apply_filters,
+    bad_segments,
+    channel_summary,
+    verdict,
+)
 from .metrics import DEFAULT_METRICS
 from .metrics.integrity import check_integrity
 
@@ -102,7 +108,7 @@ def _drop_episode_artifacts(sustained, episodes, duration, min_span=0.5,
         return sustained
 
     drop = []
-    for ch, rows in sustained.groupby("channel"):
+    for ch, _rows in sustained.groupby("channel"):
         ep = episodes[episodes["channel"] == ch]
         if not len(ep):
             continue                                   # nothing to explain it

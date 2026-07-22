@@ -7,8 +7,6 @@ confirm it is real rather than a threshold artefact.
 """
 from __future__ import annotations
 
-import numpy as np
-
 from ..core.context import MetricContext
 from ._scale import label_with_range
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 
 
@@ -45,7 +44,7 @@ class IntervalGrid:
 
     # -- constructors ---------------------------------------------------------
     @classmethod
-    def whole(cls, rec) -> "IntervalGrid":
+    def whole(cls, rec) -> IntervalGrid:
         """One interval spanning the entire recording.
 
         Reproduces the whole-recording per-channel summary of the original
@@ -54,7 +53,7 @@ class IntervalGrid:
         return cls._build(rec, [(0, rec.n_times)])
 
     @classmethod
-    def fixed(cls, rec, duration: float, overlap: float = 0.0) -> "IntervalGrid":
+    def fixed(cls, rec, duration: float, overlap: float = 0.0) -> IntervalGrid:
         """Fixed-length windows of ``duration`` seconds.
 
         Trailing samples that cannot fill a whole window are dropped, matching
@@ -73,7 +72,7 @@ class IntervalGrid:
         return cls._build(rec, bounds)
 
     @classmethod
-    def from_annotations(cls, rec, match: str, pad: float = 0.0) -> "IntervalGrid":
+    def from_annotations(cls, rec, match: str, pad: float = 0.0) -> IntervalGrid:
         """One interval per annotation whose description contains ``match``."""
         ann = rec.annotations
         hit = ann[ann["description"].astype(str).str.contains(match, case=False)]
@@ -87,14 +86,14 @@ class IntervalGrid:
         return cls._build(rec, bounds)
 
     @classmethod
-    def from_bounds(cls, rec, spans) -> "IntervalGrid":
+    def from_bounds(cls, rec, spans) -> IntervalGrid:
         """Explicit ``(t_start, t_end)`` pairs in seconds."""
         bounds = [(int(round(a * rec.sfreq)), int(round(b * rec.sfreq)))
                   for a, b in spans]
         return cls._build(rec, bounds)
 
     @classmethod
-    def _build(cls, rec, bounds) -> "IntervalGrid":
+    def _build(cls, rec, bounds) -> IntervalGrid:
         cov = rec.covered
         rows = []
         for i0, i1 in bounds:

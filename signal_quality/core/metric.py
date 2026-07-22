@@ -83,15 +83,6 @@ class Metric:
         return True
 
 
-def _blank(ctx, columns, interval_id):
-    return pd.DataFrame(
-        np.full((len(ctx.ch_names), len(columns)), np.nan),
-        columns=columns,
-        index=pd.MultiIndex.from_product([ctx.ch_names, [interval_id]],
-                                         names=["channel", "interval"]),
-    )
-
-
 def compute(metrics, rec, grid=None, ch_type: str | None = "eeg",
             block_s: float | None = None, _ctx=None):
     """Compute several metrics over one grid and join them into one table.
@@ -140,28 +131,36 @@ def compute(metrics, rec, grid=None, ch_type: str | None = "eeg",
                          block_s if block_s is not None else DEFAULT_BLOCK_S,
                          sfreq=ctx.sfreq, min_view=min_view)
 
+    # Accumulate each metric's per-interval output as plain (n_ch, n_cols)
+    # ndarrays and assemble one DataFrame per metric at the end. Building a
+    # DataFrame with a fresh MultiIndex per (interval, metric) instead turned
+    # the join into thousands of tiny-object constructions on a 1-second grid.
+    n_ch = len(ctx.ch_names)
     by_metric = {id(m): [] for m in metrics}
+    iid_order = []
     bounds = grid.table[["i_start", "i_stop"]]
     for blk in blocks:
         ctx.set_view(blk.view_start, blk.view_stop)
         for iid in blk.interval_ids:
             i0, i1 = int(bounds.at[iid, "i_start"]), int(bounds.at[iid, "i_stop"])
+            iid_order.append(iid)
             for m in metrics:
                 if id(m) in missing:
-                    by_metric[id(m)].append(_blank(ctx, m.columns, iid))
+                    by_metric[id(m)].append(np.full((n_ch, len(m.columns)), np.nan))
                     continue
                 vals = np.asarray(m.compute_interval(ctx, i0, i1), dtype=float)
-                by_metric[id(m)].append(pd.DataFrame(
-                    vals.reshape(len(ctx.ch_names), -1),
-                    columns=m.columns,
-                    index=pd.MultiIndex.from_product(
-                        [ctx.ch_names, [iid]], names=["channel", "interval"]),
-                ))
+                by_metric[id(m)].append(vals.reshape(n_ch, -1))
         ctx.release()
     ctx.set_view(0, ctx.n_times)
 
-    frames = [pd.concat(by_metric[id(m)]).sort_index() for m in metrics]
-    table = pd.concat(frames, axis=1)
+    n_iv = len(iid_order)
+    index = pd.MultiIndex.from_arrays(
+        [np.tile(ctx.ch_names, n_iv), np.repeat(iid_order, n_ch)],
+        names=["channel", "interval"])
+    frames = [pd.DataFrame(np.concatenate(by_metric[id(m)], axis=0),
+                           columns=m.columns, index=index)
+              for m in metrics]
+    table = pd.concat(frames, axis=1).sort_index()
     meta = grid.table.reindex(
         table.index.get_level_values("interval")).set_index(table.index)
     table = pd.concat([meta[["t_start", "t_end", "coverage"]], table], axis=1)

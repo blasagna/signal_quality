@@ -14,3 +14,23 @@ packages = ["signal_quality"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import sorting, UP pyupgrade, B bugbear.
+select = ["E", "W", "F", "I", "UP", "B"]
+# E741 (ambiguous name `l`): the reverse-engineered XLTEK decoder mirrors the
+# on-disk field names, where single letters are clearer than invented ones.
+ignore = ["E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# Star-style re-export modules intentionally expose names they do not use.
+"signal_quality/__init__.py" = ["F401"]
+"**/__init__.py" = ["F401"]
+# Vendored reverse-engineered XLTEK decoder: the compact lambda conversion
+# table and paired byte reads (semicolons) mirror the on-disk layout and are
+# clearer left as-is than expanded.
+"signal_quality/io/xltek.py" = ["E731", "E702"]

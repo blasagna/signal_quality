@@ -97,7 +97,7 @@ def plot_overview(rec, ch_type=None, band=(0.5, 40.0), ax=None, step=None,
     if ax is None:
         _, ax = plt.subplots(figsize=(14, max(4, 0.28 * n_ch + 1.5)))
 
-    for i, name in enumerate(names):
+    for i in range(n_ch):
         y = (n_ch - 1 - i) * step
         ax.fill_between(t, lo[i] + y, hi[i] + y, lw=0, color="#1f4e79")
 
@@ -152,7 +152,7 @@ def plot_channel_snippet(rec, channels, t_start: float = 0.0,
 
     if ax is None:
         _, ax = plt.subplots(figsize=(13, max(2.5, 0.6 * len(names) + 1.5)))
-    for k, name in enumerate(names[::-1]):
+    for k in range(len(names)):
         ax.plot(t, seg[len(names) - 1 - k] + k * step, lw=0.6)
     ax.set_yticks([k * step for k in range(len(names))])
     ax.set_yticklabels(names[::-1], fontsize=8)

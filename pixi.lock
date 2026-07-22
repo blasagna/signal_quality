@@ -366,6 +366,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-15.0.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-rst-2.1.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-2026.6.3-py314h1bee95f_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/ruff-0.15.22-h462bb3b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.9.0-np2py314hf09ca88_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.18.0-py314hf07bd8e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/scooby-0.11.2-pyhd8ed1ab_0.conda
@@ -5615,6 +5616,22 @@ packages:
   - pkg:pypi/rpds-py?source=compressed-mapping
   size: 300129
   timestamp: 1782831350283
+- conda: https://conda.anaconda.org/conda-forge/linux-64/ruff-0.15.22-h462bb3b_0.conda
+  noarch: python
+  sha256: 2002c7869a95ed94b03303a033fcc24b608597bdd01c8f01d90c47175616edb9
+  md5: ad7d8b2d37a1098a04ddd8b34b962481
+  depends:
+  - python
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  constrains:
+  - __glibc >=2.17
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/ruff?source=compressed-mapping
+  size: 9333318
+  timestamp: 1784237314764
 - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.9.0-np2py314hf09ca88_0.conda
   sha256: 6a01f4403db746acd676e34e80e3a14d041f2261d658402ca13dae6407c35d44
   md5: 30883954413aad9e3ac42134bef91ffe
@@ -5796,7 +5813,7 @@ packages:
 - pypi: .
   name: signal-quality
   version: 0.1.0
-  sha256: 174eb0af9233044d2a18345ec88513142fa9c16d3fcc36efb742c9a4f3723e43
+  sha256: e6689cc2ccf9ad2154687586c180706e84f29e01a69f8e43ebf3ffa42d671986
   requires_python: '>=3.12'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/six-1.17.0-pyhe01879c_1.conda

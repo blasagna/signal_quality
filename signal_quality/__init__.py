@@ -13,21 +13,33 @@ applied to that table. Typical use::
 
     issues = sq.check_integrity(rec)                     # gaps, clock, alignment
     flags  = sq.apply_filters(mf, sq.DEFAULT_FILTERS)    # policy, applied after
-    print(sq.verdict(flags, channels=mf.table.index.levels[0]))
+    print(sq.verdict(flags, mf))                         # pass mf so clean cells show too
 """
+from . import metrics, montage, viz
 from .core.frame import MetricFrame
 from .core.intervals import IntervalGrid
 from .core.metric import Metric, compute
-from .filters import (DEFAULT_FILTERS, WHOLE_RECORDING_FILTERS, Filter,
-                      RobustZ, Threshold, apply_filters, bad_segments,
-                      channel_summary, verdict)
 from .export import to_annotations
+from .filters import (
+    DEFAULT_FILTERS,
+    WHOLE_RECORDING_FILTERS,
+    Filter,
+    RobustZ,
+    Threshold,
+    apply_filters,
+    bad_segments,
+    channel_summary,
+    verdict,
+)
 from .io.load import load
+from .metrics.integrity import (
+    channel_alignment,
+    check_integrity,
+    coverage_gaps,
+    timestamp_anomalies,
+)
 from .report import QualityReport, assess
-from .metrics.integrity import (channel_alignment, check_integrity,
-                                coverage_gaps, timestamp_anomalies)
 from .synthetic import make_demo_recording
-from . import metrics, montage, viz
 
 __all__ = [
     "load", "assess", "QualityReport", "IntervalGrid", "Metric", "MetricFrame", "compute",

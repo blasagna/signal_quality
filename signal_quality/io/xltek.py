@@ -22,10 +22,12 @@ classic multi-segment layout (<name>_000.erd, _001.erd, ...).
     raw = read_raw_xltek("/path/to/STUDY_DIR")   # -> mne.io.RawArray
 """
 from __future__ import annotations
+
+import datetime as _dt
 import re
 import struct
-import datetime as _dt
 from pathlib import Path
+
 import numpy as np
 
 # --- headbox conversion table (uV per raw unit), ported from the public -------
@@ -73,7 +75,7 @@ def _cstr(b):
 def read_erd_header(erd_path: Path) -> dict:
     """Parse the fixed header of an .erd/.etc/.stc file (schema 8/9)."""
     with open(erd_path, "rb") as f:
-        raw = f.read(16)                                  # GUID
+        f.read(16)                                         # GUID
         schema, base = struct.unpack("<HH", f.read(4))
         if schema not in (7, 8, 9):
             raise NotImplementedError(f"file_schema {schema} not supported")
@@ -86,7 +88,7 @@ def read_erd_header(erd_path: Path) -> dict:
         sfreq, = struct.unpack("<d", f.read(8))
         n_chan, = struct.unpack("<i", f.read(4))
         deltabits, = struct.unpack("<i", f.read(4))
-        phys_chan = struct.unpack("<%di" % n_chan, f.read(4 * n_chan))
+        phys_chan = struct.unpack(f"<{n_chan}i", f.read(4 * n_chan))
         f.seek(4464)
         headbox_type = struct.unpack("<4i", f.read(16))
         headbox_sn = struct.unpack("<4i", f.read(16))
@@ -219,7 +221,7 @@ def decode_study(study_dir, verbose=True, strict=False):
     ch_types = [_ch_type(c) for c in ch_names]
     ch_unit = [_ch_unit(c) for c in ch_names]
     md = _snc_start_utc(base)
-    meas_date = md.replace(tzinfo=_dt.timezone.utc) if md is not None else None
+    meas_date = md.replace(tzinfo=_dt.UTC) if md is not None else None
     annotations = [(t, 0.0, name) for t, name in _annotations(base, sfreq, beg)]
     if len(named) != n_chan:
         defects.append(dict(check="channel_count_mismatch", channels=None,
@@ -261,7 +263,7 @@ def _raw_from_decoded(s):
         raw.set_meas_date(s["meas_date"])
     anns = _gap_annots(s["covered"], s["sfreq"]) + list(s["annotations"])
     if anns:
-        on, du, de = zip(*anns)
+        on, du, de = zip(*anns, strict=True)
         raw.set_annotations(mne.Annotations(on, du, de, orig_time=raw.info["meas_date"]))
     return raw
 
@@ -397,7 +399,8 @@ def read_raw_hdf5(path):
             meas_date=_dt.datetime.fromisoformat(md) if md else None,
             annotations=list(zip(h["ann_onset"][()].tolist(),
                                  h["ann_duration"][()].tolist(),
-                                 [x.decode() for x in h["ann_description"][()]])),
+                                 [x.decode() for x in h["ann_description"][()]],
+                                 strict=True)),
         )
     return _raw_from_decoded(s)
 

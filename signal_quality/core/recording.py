@@ -78,13 +78,14 @@ class Recording:
             return np.asarray(self.ds["covered"].values, dtype=bool)
         return np.ones(self.n_times, dtype=bool)
 
-    def pick(self, ch_type: str | None = None, names=None) -> "Recording":
+    def pick(self, ch_type: str | None = None, names=None) -> Recording:
         """Return a Recording restricted to some channels."""
         ds = self.ds
         if ch_type is not None:
             ds = ds.isel(channel=(ds.coords["ch_type"] == ch_type).values)
         if names is not None:
-            keep = [n for n in names if n in [str(c) for c in ds.coords["channel"].values]]
+            existing = {str(c) for c in ds.coords["channel"].values}
+            keep = [n for n in names if n in existing]
             ds = ds.sel(channel=keep)
         return Recording(ds, self.source_path, self.annotations, self.provenance,
                          self.defects)
@@ -138,9 +139,23 @@ def build_dataset(signal, sfreq, ch_names, ch_types=None, ch_units=None,
     identically shaped Dataset.
     """
     signal = np.asarray(signal, dtype=np.float64)
+    if signal.ndim != 2:
+        raise ValueError(f"signal must be 2-D (channel, time), got shape {signal.shape}")
     n_chan, n_times = signal.shape
-    if len(ch_names) != n_chan:
-        raise ValueError(f"{len(ch_names)} names for {n_chan} channels")
+
+    def _check_len(name, value, expected):
+        if value is not None and len(value) != expected:
+            raise ValueError(f"{name} has {len(value)} entries for {expected} channels")
+
+    _check_len("ch_names", ch_names, n_chan)
+    _check_len("ch_types", ch_types, n_chan)
+    _check_len("ch_units", ch_units, n_chan)
+    _check_len("factor_uV", factor_uV, n_chan)
+    if counts is not None and np.asarray(counts).shape != signal.shape:
+        raise ValueError(
+            f"counts shape {np.asarray(counts).shape} does not match signal {signal.shape}")
+    if covered is not None and len(covered) != n_times:
+        raise ValueError(f"covered has {len(covered)} samples for {n_times} time points")
     time = np.arange(n_times) / float(sfreq)
 
     data_vars = {"signal": (("channel", "time"), signal)}

@@ -127,8 +127,8 @@ def plot_verdict_topomap(verdicts, ax=None, title="Per-electrode verdict"):
     question that belongs in ``filters``, not here.
     """
     import matplotlib.pyplot as plt
-    from matplotlib.lines import Line2D
     import mne
+    from matplotlib.lines import Line2D
 
     if isinstance(verdicts.index, pd.MultiIndex):
         raise TypeError(

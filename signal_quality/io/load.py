@@ -107,6 +107,7 @@ def _from_lossless_hdf5(path, line_freq) -> Recording:
                 h["ann_onset"][()].tolist(),
                 h["ann_duration"][()].tolist(),
                 [x.decode() for x in h["ann_description"][()]],
+                strict=True,
             )),
             provenance={k[5:]: v for k, v in h.attrs.items()
                         if k.startswith("prov_")},

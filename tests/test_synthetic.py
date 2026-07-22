@@ -7,7 +7,6 @@ time-resolved ground truth.
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 import pytest
 
 import signal_quality as sq

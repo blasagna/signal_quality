@@ -190,7 +190,7 @@ def verdict(flags: pd.DataFrame, mf=None, channels=None) -> pd.DataFrame:
             worst = rank.groupby(level=[0, 1]).max()
             out.loc[worst.index, "verdict"] = worst.map(
                 {v: k for k, v in SEVERITY_ORDER.items()})
-            top = f[rank.to_numpy() == rank.groupby(level=[0, 1]).transform("max")]
+            top = f[rank == rank.groupby(level=[0, 1]).transform("max")]
             reasons = (top.groupby(level=[0, 1])["flag"]
                        .agg(lambda s: "+".join(sorted(set(s)))))
             out.loc[reasons.index, "reasons"] = reasons
@@ -251,8 +251,8 @@ def channel_summary(verdicts: pd.DataFrame, bad_time_frac: float = 0.20,
     exploded = (verdicts[verdicts["reasons"] != ""]["reasons"]
                 .str.split("+").explode())
     if len(exploded):
-        counts = exploded.groupby(level="channel").value_counts()
-        reasons = counts.groupby(level="channel").apply(
+        reason_counts = exploded.groupby(level="channel").value_counts()
+        reasons = reason_counts.groupby(level="channel").apply(
             lambda s: "+".join(s.head(top_reasons).index.get_level_values(-1)))
         out["reasons"] = reasons.reindex(out.index).fillna("")
     else:
@@ -292,7 +292,7 @@ def bad_segments(verdicts: pd.DataFrame, mf=None, severities=("bad",),
     for ch, sub in hit.groupby(level="channel"):
         ivs = sorted(sub.index.get_level_values("interval"))
         run = [ivs[0]]
-        for prev, cur in zip(ivs, ivs[1:]):
+        for prev, cur in zip(ivs, ivs[1:], strict=False):
             t_prev_end = _t(times, prev, "t_end")
             t_cur_start = _t(times, cur, "t_start")
             contiguous = (t_cur_start - t_prev_end) <= merge_gap

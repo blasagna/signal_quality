@@ -3,12 +3,26 @@
 Nothing here imports MNE's data model: metrics see xarray and numpy only, which
 is what keeps the library usable on non-EEG signals.
 """
-from .amplitude import (ClipFraction, FlatFraction, PeakToPeak, RMS,
-                        clip_fraction, flat_fraction, p2p, rms)
-from .spatial import MaxCorrelation, correlation_pairs, max_correlation
-from .spectral import (BandPower, EMGFraction, LineRatio, band_power,
-                       emg_fraction, line_ratio)
 from . import integrity
+from .amplitude import (
+    RMS,
+    ClipFraction,
+    FlatFraction,
+    PeakToPeak,
+    clip_fraction,
+    flat_fraction,
+    p2p,
+    rms,
+)
+from .spatial import MaxCorrelation, correlation_pairs, max_correlation
+from .spectral import (
+    BandPower,
+    EMGFraction,
+    LineRatio,
+    band_power,
+    emg_fraction,
+    line_ratio,
+)
 
 #: The per-channel metric set ported from the reference EEG analysis.
 DEFAULT_METRICS = [RMS, LineRatio, EMGFraction, MaxCorrelation, FlatFraction,

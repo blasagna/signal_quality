@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import signal_quality as sq
-from signal_quality.core.recording import Recording, build_dataset
+from signal_quality.core.recording import Recording
 from signal_quality.metrics import integrity
 
 

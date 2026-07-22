@@ -256,7 +256,7 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
         covered[g0:g1] = False
         counts[:, g0:g1] = 0
         signal[:, g0:g1] = 0.0
-        annotations.append(((g1 - g0) and g0 / sfreq, (g1 - g0) / sfreq, "BAD_gap"))
+        annotations.append((g0 / sfreq, (g1 - g0) / sfreq, "BAD_gap"))
 
     ch_types = ["eeg"] * (len(CORE_1020) + len(EXTENDED) + len(EARS))
     ch_types += ["ecg", "misc"]

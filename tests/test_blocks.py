@@ -13,9 +13,11 @@ import signal_quality as sq
 from signal_quality import metrics as M
 from signal_quality.core.blocks import filter_pad_samples, plan_blocks
 
-ALL_METRICS = lambda: [M.RMS(), M.PeakToPeak(), M.FlatFraction(),
-                       M.MaxCorrelation(), M.LineRatio(), M.EMGFraction(),
-                       M.ClipFraction()]
+
+def ALL_METRICS():
+    return [M.RMS(), M.PeakToPeak(), M.FlatFraction(),
+            M.MaxCorrelation(), M.LineRatio(), M.EMGFraction(),
+            M.ClipFraction()]
 
 
 @pytest.fixture(scope="module")
