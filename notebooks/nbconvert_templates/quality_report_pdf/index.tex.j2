@@ -1,0 +1,15 @@
+((=- Mirror the stock latex/index.tex.j2: default to the jupyter cell style. -=))
+((*- if not cell_style is defined -*))
+    ((* set cell_style = 'style_jupyter.tex.j2' *))
+((*- endif -*))
+((* extends cell_style *))
+
+((*- block docclass -*))
+\documentclass[11pt]{article}
+((*- endblock docclass -*))
+
+((* block commands *))
+((( super() )))
+% markdown tables emit \def\LTcaptype{none}; define the counter it references
+\newcounter{none}
+((* endblock commands *))

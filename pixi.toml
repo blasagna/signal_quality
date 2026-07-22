@@ -8,6 +8,9 @@ version = "0.1.0"
 [tasks]
 test = "pytest -q"
 lab = "jupyter lab"
+report-pdf = "jupyter nbconvert --to pdf --template quality_report_pdf --TemplateExporter.extra_template_basedirs=notebooks/nbconvert_templates --output-dir output notebooks/quality_report.ipynb"
+report-html = "jupyter nbconvert --to html --output-dir output notebooks/quality_report.ipynb"
+report = { depends-on = ["report-pdf", "report-html"] }
 
 [pypi-dependencies]
 signal_quality = { path = ".", editable = true }
@@ -23,3 +26,5 @@ pandas = ">=3.0.3,<4"
 h5py = ">=3.16.0,<4"
 xarray = ">=2025.1.0"
 pytest = ">=8.0,<9"
+pandoc = ">=3.10,<4"
+nbconvert = ">=7.17.1,<8"
