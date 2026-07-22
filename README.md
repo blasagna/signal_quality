@@ -121,3 +121,10 @@ pixi run lab
   fit. Lazy loading is the follow-on.
 - The data model is `xarray`; MNE is used only for reading files, array-level filtering, and
   electrode geometry, so the metrics are not EEG-specific.
+
+## TODO
+
+- video quality: continuity, frame rate, dynamic range
+- EKG
+- EMG
+- IMU
