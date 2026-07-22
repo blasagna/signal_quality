@@ -1,4 +1,5 @@
 """Filters are policy applied to a finished table, independent of the metrics."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -12,9 +13,11 @@ from signal_quality import metrics as M
 @pytest.fixture
 def whole(faulty_rec):
     """Whole-recording frame, judged by the whole-recording thresholds."""
-    mf = sq.compute([M.RMS(), M.LineRatio(), M.FlatFraction(),
-                     M.MaxCorrelation(), M.EMGFraction()],
-                    faulty_rec, sq.IntervalGrid.whole(faulty_rec))
+    mf = sq.compute(
+        [M.RMS(), M.LineRatio(), M.FlatFraction(), M.MaxCorrelation(), M.EMGFraction()],
+        faulty_rec,
+        sq.IntervalGrid.whole(faulty_rec),
+    )
     return mf, sq.apply_filters(mf, sq.WHOLE_RECORDING_FILTERS)
 
 
@@ -47,10 +50,12 @@ def test_correlation_pairs_shortlists_the_bridge(faulty_rec):
 def test_thresholds_are_policy_not_recomputation(whole):
     """The same table judged by two policies yields different verdicts."""
     mf, _ = whole
-    strict = sq.apply_filters(mf, [sq.Threshold(metric="line_ratio", op=">",
-                                                value=2, flag="LINE_NOISE")])
-    lenient = sq.apply_filters(mf, [sq.Threshold(metric="line_ratio", op=">",
-                                                 value=1e9, flag="LINE_NOISE")])
+    strict = sq.apply_filters(
+        mf, [sq.Threshold(metric="line_ratio", op=">", value=2, flag="LINE_NOISE")]
+    )
+    lenient = sq.apply_filters(
+        mf, [sq.Threshold(metric="line_ratio", op=">", value=1e9, flag="LINE_NOISE")]
+    )
     assert len(strict) > 0
     assert len(lenient) == 0
 
@@ -58,8 +63,9 @@ def test_thresholds_are_policy_not_recomputation(whole):
 def test_robust_z_is_resistant_to_the_outlier_it_finds():
     """A mean/std z-score would be dragged out by the outlier; MAD is not."""
     vals = [10.0] * 20 + [1000.0]
-    idx = pd.MultiIndex.from_product([[f"c{i}" for i in range(21)], [0]],
-                                     names=["channel", "interval"])
+    idx = pd.MultiIndex.from_product(
+        [[f"c{i}" for i in range(21)], [0]], names=["channel", "interval"]
+    )
     table = pd.DataFrame({"rms": vals}, index=idx)
     z = sq.RobustZ.zscores(table, "rms")
     assert abs(z.iloc[-1]) > 10
@@ -69,8 +75,7 @@ def test_robust_z_is_resistant_to_the_outlier_it_finds():
 def test_filter_on_missing_column_is_silent(whole):
     """A metric that was not computed must not raise or fabricate flags."""
     mf, _ = whole
-    out = sq.apply_filters(mf, [sq.Threshold(metric="clip_pct", op=">", value=0,
-                                             flag="CLIPPING")])
+    out = sq.apply_filters(mf, [sq.Threshold(metric="clip_pct", op=">", value=0, flag="CLIPPING")])
     assert len(out) == 0
 
 
@@ -84,10 +89,10 @@ def test_flags_carry_the_evidence(whole):
 
 # --- per-interval verdicts ---------------------------------------------------
 
+
 @pytest.fixture
 def per_interval(faulty_rec):
-    mf = sq.compute([M.RMS(), M.FlatFraction(), M.MaxCorrelation(),
-                     M.PeakToPeak()], faulty_rec)
+    mf = sq.compute([M.RMS(), M.FlatFraction(), M.MaxCorrelation(), M.PeakToPeak()], faulty_rec)
     flags = sq.apply_filters(mf, sq.DEFAULT_FILTERS)
     return mf, flags, sq.verdict(flags, mf)
 
@@ -108,13 +113,16 @@ def test_verdict_marks_unflagged_cells_good_not_missing(per_interval):
 
 
 def test_verdict_takes_the_worst_severity_in_a_cell():
-    flags = pd.DataFrame([
-        ("C3", 0, "EMG", "marginal", "emg_pct", 40.0, 35.0),
-        ("C3", 0, "FLAT", "bad", "flat_frac", 1.0, 0.5),
-    ], columns=sq.filters.FLAG_COLUMNS)
+    flags = pd.DataFrame(
+        [
+            ("C3", 0, "EMG", "marginal", "emg_pct", 40.0, 35.0),
+            ("C3", 0, "FLAT", "bad", "flat_frac", 1.0, 0.5),
+        ],
+        columns=sq.filters.FLAG_COLUMNS,
+    )
     v = sq.verdict(flags)
     assert v.loc[("C3", 0), "verdict"] == "bad"
-    assert v.loc[("C3", 0), "reasons"] == "FLAT"      # worst-severity flags only
+    assert v.loc[("C3", 0), "reasons"] == "FLAT"  # worst-severity flags only
     assert v.loc[("C3", 0), "n_flags"] == 2
 
 
@@ -124,7 +132,7 @@ def test_channel_summary_percentages_use_covered_time(gapped_rec):
     v = sq.verdict(flags, mf)
     s = sq.channel_summary(v)
 
-    assert (s["pct_no_data"] > 0).all()               # the fixture has a gap
+    assert (s["pct_no_data"] > 0).all()  # the fixture has a gap
     # good+marginal+bad must account for all *covered* time, gap excluded.
     total = s["pct_good"] + s["pct_marginal"] + s["pct_bad"]
     np.testing.assert_allclose(total.to_numpy(), 100.0, atol=1e-9)
@@ -141,12 +149,12 @@ def test_channel_summary_needs_sustained_badness(per_interval):
 
 # --- segments ----------------------------------------------------------------
 
+
 def _verdicts(rows, n_ch=1):
-    idx = pd.MultiIndex.from_tuples([r[:2] for r in rows],
-                                    names=["channel", "interval"])
-    return pd.DataFrame({"verdict": [r[2] for r in rows],
-                         "reasons": [r[3] for r in rows],
-                         "n_flags": 1}, index=idx)
+    idx = pd.MultiIndex.from_tuples([r[:2] for r in rows], names=["channel", "interval"])
+    return pd.DataFrame(
+        {"verdict": [r[2] for r in rows], "reasons": [r[3] for r in rows], "n_flags": 1}, index=idx
+    )
 
 
 def test_segments_merge_contiguous_intervals():
@@ -175,7 +183,7 @@ def test_segments_are_empty_when_nothing_is_bad():
     v = _verdicts([("C3", i, "good", "") for i in range(5)])
     seg = sq.bad_segments(v)
     assert len(seg) == 0
-    assert "t_start" in seg.columns          # still correctly shaped
+    assert "t_start" in seg.columns  # still correctly shaped
 
 
 def test_annotations_are_channel_scoped(per_interval):

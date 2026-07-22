@@ -5,6 +5,7 @@ runs on realistic inputs and puts something on the axes. Plotting code breaks
 silently and is usually only exercised from a notebook, so cheap coverage here
 is worth having.
 """
+
 from __future__ import annotations
 
 import matplotlib
@@ -33,17 +34,18 @@ def scalp_rec(faulty_rec):
     # Positional, so the fixture's faults land on known sites:
     #   C3=clean C4=clean O1=flat O2=mains F3=bridge-to-C3 F4=loud
     names = ["C3", "C4", "O1", "O2", "F3", "F4"]
-    ds = build_dataset(faulty_rec.ds["signal"].values, faulty_rec.sfreq, names,
-                       ["eeg"] * 6)
+    ds = build_dataset(faulty_rec.ds["signal"].values, faulty_rec.sfreq, names, ["eeg"] * 6)
     return Recording(ds)
 
 
 @pytest.fixture
 def computed(scalp_rec):
     """Whole-recording view, for the plots that need one row per channel."""
-    mf = sq.compute([M.RMS(), M.LineRatio(), M.MaxCorrelation(),
-                     M.FlatFraction(), M.EMGFraction()],
-                    scalp_rec, sq.IntervalGrid.whole(scalp_rec))
+    mf = sq.compute(
+        [M.RMS(), M.LineRatio(), M.MaxCorrelation(), M.FlatFraction(), M.EMGFraction()],
+        scalp_rec,
+        sq.IntervalGrid.whole(scalp_rec),
+    )
     flags = sq.apply_filters(mf, sq.WHOLE_RECORDING_FILTERS)
     verdicts = sq.verdict(flags, mf)
     return mf, flags, sq.channel_summary(verdicts, bad_time_frac=0.0)
@@ -82,9 +84,8 @@ def test_log_topomap_survives_a_dead_channel():
     -inf once logged. Naive colour limits would stretch the scale until every
     other electrode rendered as one flat colour."""
     rec, _ = sq.make_demo_recording()
-    mf = sq.compute([M.LineRatio(), M.FlatFraction()], rec,
-                    sq.IntervalGrid.whole(rec))
-    assert mf.table["line_ratio"].isna().any()          # the dead electrode
+    mf = sq.compute([M.LineRatio(), M.FlatFraction()], rec, sq.IntervalGrid.whole(rec))
+    assert mf.table["line_ratio"].isna().any()  # the dead electrode
 
     ax = sq.viz.plot_metric_topomap(mf, "line_ratio", log=True)
     lo, hi = ax.images[0].get_clim() if ax.images else ax.collections[0].get_clim()
@@ -105,7 +106,7 @@ def test_good_bad_psd_ranks_worst_first(scalp_rec, computed):
     mf, flags, _ = computed
     ax = sq.viz.plot_good_bad_psd(scalp_rec, flags, flag="LINE_NOISE")
     labelled = [t.get_text() for t in ax.get_legend().get_texts()]
-    assert any("O2" in t for t in labelled)      # O2 carries the injected tone
+    assert any("O2" in t for t in labelled)  # O2 carries the injected tone
     assert ax.lines
 
 
@@ -126,6 +127,7 @@ def test_metric_trend_and_clean_fraction(scalp_rec):
 
 # --- y-axis scale annotation ------------------------------------------------
 
+
 def test_trend_ylabel_states_the_observed_range(scalp_rec):
     grid = sq.IntervalGrid.fixed(scalp_rec, 5.0)
     wmf = sq.compute([M.RMS()], scalp_rec, grid)
@@ -136,7 +138,7 @@ def test_trend_ylabel_states_the_observed_range(scalp_rec):
 def test_stacked_plots_carry_a_scale_bar(scalp_rec):
     """Channel-name y ticks say nothing about amplitude; the bar must."""
     ax = sq.viz.plot_channel_snippet(scalp_rec, ["C3", "C4"], 0.0, 5.0, step=150.0)
-    assert "150" in ax.get_ylabel()                    # lane spacing stated
+    assert "150" in ax.get_ylabel()  # lane spacing stated
     assert any("150" in t.get_text() and "µV" in t.get_text() for t in ax.texts)
     assert "peak" in ax.get_title()
 
@@ -148,6 +150,7 @@ def test_psd_ylabel_states_the_range(scalp_rec, computed):
 
 
 # --- whole-recording overview -----------------------------------------------
+
 
 def test_overview_draws_every_channel(scalp_rec):
     ax = sq.viz.plot_overview(scalp_rec)
@@ -169,12 +172,12 @@ def test_overview_envelope_preserves_brief_excursions():
     sf, n = 250.0, 40_000
     rng = np.random.default_rng(0)
     X = rng.standard_normal((2, n)) * 20e-6
-    X[0, 12_345] = 5_000e-6                       # one enormous sample
+    X[0, 12_345] = 5_000e-6  # one enormous sample
     rec = Recording(build_dataset(X, sf, ["A", "B"], ["eeg", "eeg"]))
 
     ax = sq.viz.plot_overview(rec, band=None, max_points=200, clip=False)
     spiked = ax.collections[0].get_paths()[0].vertices[:, 1]
-    assert spiked.max() > 1_000            # µV; survived the downsampling
+    assert spiked.max() > 1_000  # µV; survived the downsampling
 
 
 def test_overview_clips_and_names_the_offender():
@@ -193,7 +196,7 @@ def test_overview_normalizes_mixed_channel_types():
     rec, _ = sq.make_demo_recording()
     assert len(set(str(t) for t in rec.ds.coords["ch_type"].values)) > 1
 
-    auto = sq.viz.plot_overview(rec)                      # normalize="auto"
+    auto = sq.viz.plot_overview(rec)  # normalize="auto"
     assert "SD" in auto.get_ylabel()
     assert "per-channel SD" in auto.get_title()
 
@@ -237,4 +240,4 @@ def test_snippet_picks_a_covered_window(gapped_rec):
 
     t0 = _quiet_window(gapped_rec, 5.0)
     i0 = int(t0 * gapped_rec.sfreq)
-    assert gapped_rec.covered[i0:i0 + int(5 * gapped_rec.sfreq)].all()
+    assert gapped_rec.covered[i0 : i0 + int(5 * gapped_rec.sfreq)].all()

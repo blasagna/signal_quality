@@ -5,13 +5,15 @@ about amplitude — the reader cannot tell 5 µV from 5 mV. These helpers put th
 numeric scale back on every plot: a scale bar for stacked axes, and an explicit
 observed range on ordinary ones.
 """
+
 from __future__ import annotations
 
 import numpy as np
 
 
-def add_scale_bar(ax, size: float, unit: str = "µV", loc=(0.985, 0.03),
-                  color: str = "k", fontsize: int = 8):
+def add_scale_bar(
+    ax, size: float, unit: str = "µV", loc=(0.985, 0.03), color: str = "k", fontsize: int = 8
+):
     """Draw a vertical bar spanning ``size`` data units, labelled with its value.
 
     Used where the y axis carries channel names instead of numbers, so the plot
@@ -22,11 +24,18 @@ def add_scale_bar(ax, size: float, unit: str = "µV", loc=(0.985, 0.03),
     y0, y1 = ax.get_ylim()
     x = x0 + loc[0] * (x1 - x0)
     y = y0 + loc[1] * (y1 - y0)
-    ax.plot([x, x], [y, y + size], color=color, lw=2.5, solid_capstyle="butt",
-            zorder=10)
-    ax.text(x - 0.008 * (x1 - x0), y + size / 2, f"{_fmt(size)} {unit}",
-            va="center", ha="right", fontsize=fontsize, color=color, zorder=10,
-            bbox=dict(fc="white", ec="none", alpha=0.75, pad=1.0))
+    ax.plot([x, x], [y, y + size], color=color, lw=2.5, solid_capstyle="butt", zorder=10)
+    ax.text(
+        x - 0.008 * (x1 - x0),
+        y + size / 2,
+        f"{_fmt(size)} {unit}",
+        va="center",
+        ha="right",
+        fontsize=fontsize,
+        color=color,
+        zorder=10,
+        bbox=dict(fc="white", ec="none", alpha=0.75, pad=1.0),
+    )
     return ax
 
 

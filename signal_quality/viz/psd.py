@@ -5,15 +5,23 @@ ratio of 912 is an assertion, while a spectrum showing its 60 Hz spike towering
 over every clean channel is the evidence. Whenever a flag fires, this is how you
 confirm it is real rather than a threshold artefact.
 """
+
 from __future__ import annotations
 
 from ..core.context import MetricContext
 from ._scale import label_with_range
 
 
-def plot_good_bad_psd(rec, flags, flag: str = "LINE_NOISE", ax=None,
-                      fmax: float = 80.0, band=None, max_examples: int = 5,
-                      title=None):
+def plot_good_bad_psd(
+    rec,
+    flags,
+    flag: str = "LINE_NOISE",
+    ax=None,
+    fmax: float = 80.0,
+    band=None,
+    max_examples: int = 5,
+    title=None,
+):
     """Overlay PSDs of channels carrying ``flag`` against unflagged channels.
 
     Flagged channels are drawn worst-first (by the metric value that tripped the
@@ -29,9 +37,12 @@ def plot_good_bad_psd(rec, flags, flag: str = "LINE_NOISE", ax=None,
     if not len(hit):
         raise ValueError(f"no channels flagged {flag!r}")
     # Rank by the most extreme value that fired this flag on each channel.
-    ranked = (hit.assign(_v=hit["value"].abs())
-              .groupby("channel")["_v"].max()
-              .sort_values(ascending=False))
+    ranked = (
+        hit.assign(_v=hit["value"].abs())
+        .groupby("channel")["_v"]
+        .max()
+        .sort_values(ascending=False)
+    )
     bad = ranked.index.tolist()
 
     ctx = MetricContext(rec, None, ch_type="eeg")
@@ -49,20 +60,21 @@ def plot_good_bad_psd(rec, flags, flag: str = "LINE_NOISE", ax=None,
             ax.semilogy(f[sel], P[idx[c]][sel], color="#2e7d32", lw=0.7, alpha=0.4)
     for c in bad[:max_examples]:
         if c in idx:
-            ax.semilogy(f[sel], P[idx[c]][sel], lw=1.6,
-                        label=f"{c} ({ranked[c]:.0f})")
+            ax.semilogy(f[sel], P[idx[c]][sel], lw=1.6, label=f"{c} ({ranked[c]:.0f})")
 
     if band is None and "LINE" in flag.upper():
         band = (rec.line_freq - 5, rec.line_freq + 5)
     if band:
         ax.axvspan(*band, color="orange", alpha=0.15)
 
-    ax.plot([], [], color="#2e7d32", lw=0.7, alpha=0.6,
-            label=f"unflagged ({len(good)})")
+    ax.plot([], [], color="#2e7d32", lw=0.7, alpha=0.6, label=f"unflagged ({len(good)})")
     ax.set_xlabel("frequency (Hz)")
     label_with_range(ax, P[:, sel], "power (µV²/Hz)", log=True)
-    ax.set_title(title or f"Spectra: worst {min(max_examples, len(bad))} of "
-                          f"{len(bad)} channels flagged {flag}, vs unflagged")
+    ax.set_title(
+        title
+        or f"Spectra: worst {min(max_examples, len(bad))} of "
+        f"{len(bad)} channels flagged {flag}, vs unflagged"
+    )
     ax.legend(fontsize=8, ncol=2)
     ax.set_xlim(0, fmax)
     return ax
@@ -90,12 +102,22 @@ def plot_psd_examples(rec, mf, metric: str = "line_ratio", n: int = 3, ax=None):
         _, ax = plt.subplots(figsize=(11, 5))
     for c in best:
         if c in idx:
-            ax.semilogy(f[sel], P[idx[c]][sel], color="#2e7d32", lw=1.2,
-                        label=f"{c} (best, {per_ch[c]:.0f})")
+            ax.semilogy(
+                f[sel],
+                P[idx[c]][sel],
+                color="#2e7d32",
+                lw=1.2,
+                label=f"{c} (best, {per_ch[c]:.0f})",
+            )
     for c in worst:
         if c in idx:
-            ax.semilogy(f[sel], P[idx[c]][sel], color="#c62828", lw=1.2,
-                        label=f"{c} (worst, {per_ch[c]:.0f})")
+            ax.semilogy(
+                f[sel],
+                P[idx[c]][sel],
+                color="#c62828",
+                lw=1.2,
+                label=f"{c} (worst, {per_ch[c]:.0f})",
+            )
     ax.set_xlabel("frequency (Hz)")
     label_with_range(ax, P[:, sel], "power (µV²/Hz)", log=True)
     ax.set_title(f"Best vs worst channels by {metric}")

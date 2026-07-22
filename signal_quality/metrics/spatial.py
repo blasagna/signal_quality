@@ -5,6 +5,7 @@ threshold on a single-channel measurement — unlike robust-z, which *is* a
 cross-channel comparison of an existing column and therefore lives in
 ``filters.py``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -96,11 +97,14 @@ def correlation_pairs(rec, band=(1.0, 45.0), threshold=0.95, top=None):
     med = np.median(ED[iu]) or 1.0
 
     names = ctx.ch_names
-    rows = [(names[i], names[j], float(C[i, j]), float(ED[i, j] / med))
-            for i, j in zip(*iu, strict=True) if abs(C[i, j]) >= threshold]
-    out = (pd.DataFrame(rows, columns=["channel_a", "channel_b", "corr",
-                                       "elec_distance"])
-           .sort_values("corr", ascending=False, ignore_index=True))
+    rows = [
+        (names[i], names[j], float(C[i, j]), float(ED[i, j] / med))
+        for i, j in zip(*iu, strict=True)
+        if abs(C[i, j]) >= threshold
+    ]
+    out = pd.DataFrame(
+        rows, columns=["channel_a", "channel_b", "corr", "elec_distance"]
+    ).sort_values("corr", ascending=False, ignore_index=True)
     return out.head(top) if top else out
 
 

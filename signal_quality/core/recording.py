@@ -5,6 +5,7 @@ is the single source of truth for signal values and per-channel metadata; MNE is
 used only at the edges (reading files, array-level filtering, sensor geometry)
 and never appears in ``metrics/`` or ``filters.py``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -37,9 +38,7 @@ class Recording:
     ds: xr.Dataset
     source_path: Path | None = None
     annotations: pd.DataFrame = field(
-        default_factory=lambda: pd.DataFrame(
-            columns=["onset", "duration", "description"]
-        )
+        default_factory=lambda: pd.DataFrame(columns=["onset", "duration", "description"])
     )
     provenance: dict = field(default_factory=dict)
     defects: list[dict] = field(default_factory=list)
@@ -87,8 +86,7 @@ class Recording:
             existing = {str(c) for c in ds.coords["channel"].values}
             keep = [n for n in names if n in existing]
             ds = ds.sel(channel=keep)
-        return Recording(ds, self.source_path, self.annotations, self.provenance,
-                         self.defects)
+        return Recording(ds, self.source_path, self.annotations, self.provenance, self.defects)
 
     def to_mne(self):
         """Build an ``mne.io.RawArray`` for MNE-shaped work (bipolar montages,
@@ -130,9 +128,18 @@ class Recording:
         )
 
 
-def build_dataset(signal, sfreq, ch_names, ch_types=None, ch_units=None,
-                  counts=None, factor_uV=None, covered=None, meas_date=None,
-                  line_freq=60.0) -> xr.Dataset:
+def build_dataset(
+    signal,
+    sfreq,
+    ch_names,
+    ch_types=None,
+    ch_units=None,
+    counts=None,
+    factor_uV=None,
+    covered=None,
+    meas_date=None,
+    line_freq=60.0,
+) -> xr.Dataset:
     """Assemble the canonical Dataset from plain arrays.
 
     Single construction path, shared by every reader, so all sources produce an
@@ -153,7 +160,8 @@ def build_dataset(signal, sfreq, ch_names, ch_types=None, ch_units=None,
     _check_len("factor_uV", factor_uV, n_chan)
     if counts is not None and np.asarray(counts).shape != signal.shape:
         raise ValueError(
-            f"counts shape {np.asarray(counts).shape} does not match signal {signal.shape}")
+            f"counts shape {np.asarray(counts).shape} does not match signal {signal.shape}"
+        )
     if covered is not None and len(covered) != n_times:
         raise ValueError(f"covered has {len(covered)} samples for {n_times} time points")
     time = np.arange(n_times) / float(sfreq)

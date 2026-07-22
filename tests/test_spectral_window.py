@@ -6,6 +6,7 @@ for a badly-contacting electrode measured **5.1** instead of the ~963 seen over
 the whole recording — no error, no warning, just a metric that had stopped
 measuring what it claims to. These tests pin the fix.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -30,17 +31,17 @@ def mains_rec():
     X = np.fft.irfft(spec / np.maximum(f, 0.5), n=n, axis=1)
     X *= 20e-6 / X.std(axis=1, keepdims=True)
     X[1] += 300e-6 * np.sin(2 * np.pi * 60 * t)
-    return Recording(build_dataset(X, SF, ["A", "NOISY", "B", "C"],
-                                   ["eeg"] * 4))
+    return Recording(build_dataset(X, SF, ["A", "NOISY", "B", "C"], ["eeg"] * 4))
 
 
 def test_one_second_intervals_still_resolve_mains(mains_rec):
-    mf = sq.compute([M.LineRatio()], mains_rec)          # default 1 s grid
+    mf = sq.compute([M.LineRatio()], mains_rec)  # default 1 s grid
     per_ch = mf.table["line_ratio"].groupby(level="channel").median()
 
     assert per_ch["NOISY"] > 1000, (
         f"line_ratio collapsed to {per_ch['NOISY']:.1f} — the 1-second window is "
-        f"being analysed at its own resolution instead of a widened one")
+        f"being analysed at its own resolution instead of a widened one"
+    )
     assert per_ch.drop("NOISY").max() < 100
 
 
@@ -71,11 +72,11 @@ def test_analysis_window_is_centered_and_clamped(mains_rec):
 
     a, b = ctx.analysis_bounds(int(30 * sf), int(31 * sf), 4.0)
     assert b - a == int(4 * sf)
-    assert a < int(30 * sf) and b > int(31 * sf)          # centered
+    assert a < int(30 * sf) and b > int(31 * sf)  # centered
 
-    a, b = ctx.analysis_bounds(0, int(1 * sf), 4.0)       # at the start
+    a, b = ctx.analysis_bounds(0, int(1 * sf), 4.0)  # at the start
     assert (a, b - a) == (0, int(4 * sf))
-    a, b = ctx.analysis_bounds(n - int(1 * sf), n, 4.0)   # at the end
+    a, b = ctx.analysis_bounds(n - int(1 * sf), n, 4.0)  # at the end
     assert b == n and b - a == int(4 * sf)
 
 
@@ -92,7 +93,7 @@ def test_spectra_are_nan_when_the_window_is_mostly_gap(gapped_rec):
 def test_amplitude_metrics_keep_exact_interval_bounds(mains_rec):
     """Only spectral metrics widen; an amplitude metric must see its interval
     and nothing else, or artifact onsets would smear too."""
-    assert M.RMS().required_pad_s(SF) > 0            # filter context only
+    assert M.RMS().required_pad_s(SF) > 0  # filter context only
     assert getattr(M.RMS(), "min_analysis_s", 0.0) == 0.0
     assert getattr(M.PeakToPeak(), "min_analysis_s", 0.0) == 0.0
     assert M.LineRatio().min_analysis_s == 4.0

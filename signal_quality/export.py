@@ -4,6 +4,7 @@ Kept separate from ``filters.py`` so the policy layer stays free of any
 dependency on MNE — metrics and filters must work on plain tables, and a
 convenience converter is not a reason to couple them.
 """
+
 from __future__ import annotations
 
 import pandas as pd

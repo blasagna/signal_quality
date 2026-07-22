@@ -1,4 +1,5 @@
 """Electrode placement, including the legacy-label translation."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -37,7 +38,7 @@ def test_positions_are_distinct_and_plain_numpy():
 def test_label_translation_round_trips():
     assert to_modern("T3") == "T7"
     assert to_clinical("T7") == "T3"
-    assert to_modern("Cz") == "Cz"           # identity where no rename applies
+    assert to_modern("Cz") == "Cz"  # identity where no rename applies
     assert to_clinical(to_modern("T5")) == "T5"
 
 

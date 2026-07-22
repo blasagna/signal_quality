@@ -14,6 +14,7 @@ still lands on the fine interval. The cost is temporal smearing — a one-second
 burst of line noise is spread over ``min_analysis_s`` — so **onset timing from
 spectral flags is approximate**. Amplitude-domain metrics keep exact bounds.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -67,8 +68,7 @@ class LineRatio(Metric):
 
     def compute_interval(self, ctx, i_start, i_stop):
         f0 = self.f0 if self.f0 is not None else ctx.rec.line_freq
-        f, P = ctx.welch(i_start, i_stop, band=None,
-                         min_analysis_s=self.min_analysis_s)
+        f, P = ctx.welch(i_start, i_stop, band=None, min_analysis_s=self.min_analysis_s)
         if P.shape[1] < 2:
             return np.full(P.shape[0], np.nan)
         hw, sw = self.half_width, self.side_width
@@ -97,8 +97,9 @@ class EMGFraction(Metric):
         return (self.band_lo, self.fmax)
 
     def compute_interval(self, ctx, i_start, i_stop):
-        f, P = ctx.welch(i_start, i_stop, band=self.analysis_band(),
-                         min_analysis_s=self.min_analysis_s)
+        f, P = ctx.welch(
+            i_start, i_stop, band=self.analysis_band(), min_analysis_s=self.min_analysis_s
+        )
         if P.shape[1] < 2:
             return np.full(P.shape[0], np.nan)
         total = ctx.band_sum(P, f, self.band_lo, self.fmax)
@@ -125,11 +126,10 @@ class BandPower(Metric):
         return self.band
 
     def compute_interval(self, ctx, i_start, i_stop):
-        f, P = ctx.welch(i_start, i_stop, band=self.band,
-                         min_analysis_s=self.min_analysis_s)
+        f, P = ctx.welch(i_start, i_stop, band=self.band, min_analysis_s=self.min_analysis_s)
         if P.shape[1] < 2:
             return np.full(P.shape[0], np.nan)
-        return ctx.band_sum(P, f, self.fmin, self.fmax)   # absolute: 0 is valid
+        return ctx.band_sum(P, f, self.fmin, self.fmax)  # absolute: 0 is valid
 
 
 line_ratio = LineRatio

@@ -1,4 +1,5 @@
 """Each metric must respond to its own fault and stay quiet on the others."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -41,9 +42,9 @@ def test_line_ratio_follows_the_line_frequency(faulty_rec):
 
 def test_max_corr_flags_bridge_and_isolation(faulty_rec):
     t = _table(faulty_rec, [M.MaxCorrelation()])["max_corr"].droplevel("interval")
-    assert t["BRIDGE"] > 0.97          # near-copy of C3
-    assert t["C3"] > 0.97              # ... which implicates C3 too
-    assert t["FLAT"] < 0.6             # dead channel correlates with nothing
+    assert t["BRIDGE"] > 0.97  # near-copy of C3
+    assert t["C3"] > 0.97  # ... which implicates C3 too
+    assert t["FLAT"] < 0.6  # dead channel correlates with nothing
 
 
 def test_correlation_pairs_names_the_bridged_pair(faulty_rec):
@@ -69,11 +70,13 @@ def test_emg_fraction_responds_to_high_frequency_power(clean_rec):
     t = np.arange(X.shape[1]) / clean_rec.sfreq
     X[1] += 30e-6 * np.sin(2 * np.pi * 35 * t) * rng.standard_normal(X.shape[1])
     from signal_quality.core.recording import Recording, build_dataset
-    rec = Recording(build_dataset(X, clean_rec.sfreq, clean_rec.ch_names,
-                                  ["eeg"] * len(clean_rec.ch_names)))
+
+    rec = Recording(
+        build_dataset(X, clean_rec.sfreq, clean_rec.ch_names, ["eeg"] * len(clean_rec.ch_names))
+    )
     t_emg = _table(rec, [M.EMGFraction()])["emg_pct"].droplevel("interval")
     assert t_emg.iloc[1] > 5 * t_emg.iloc[0]
-    assert t_emg.drop(t_emg.index[1]).max() < 5   # background EEG is not "muscle"
+    assert t_emg.drop(t_emg.index[1]).max() < 5  # background EEG is not "muscle"
 
 
 def test_metrics_exclude_gap_samples(gapped_rec):
@@ -81,7 +84,7 @@ def test_metrics_exclude_gap_samples(gapped_rec):
     rms_masked = _table(gapped_rec, [M.RMS()])["rms"].droplevel("interval")["C3"]
     X = gapped_rec.ds["signal"].values
     import mne
-    naive = mne.filter.filter_data(X * 1e6, gapped_rec.sfreq, 1.0, 45.0,
-                                   verbose="error")[0].std()
+
+    naive = mne.filter.filter_data(X * 1e6, gapped_rec.sfreq, 1.0, 45.0, verbose="error")[0].std()
     # The gap drags the naive figure down; masking must not suffer that.
     assert rms_masked > naive * 1.05

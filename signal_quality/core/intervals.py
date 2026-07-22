@@ -4,6 +4,7 @@ Building the grid once, up front, is what makes composition work: two metrics
 computed over the same grid produce tables with an identical row index, so
 joining them is a plain concat with no alignment guesswork.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -68,7 +69,8 @@ class IntervalGrid:
         bounds = [(s, s + w) for s in range(0, rec.n_times - w + 1, step)]
         if not bounds:
             raise ValueError(
-                f"window of {duration}s does not fit in a {rec.duration:.1f}s recording")
+                f"window of {duration}s does not fit in a {rec.duration:.1f}s recording"
+            )
         return cls._build(rec, bounds)
 
     @classmethod
@@ -88,8 +90,7 @@ class IntervalGrid:
     @classmethod
     def from_bounds(cls, rec, spans) -> IntervalGrid:
         """Explicit ``(t_start, t_end)`` pairs in seconds."""
-        bounds = [(int(round(a * rec.sfreq)), int(round(b * rec.sfreq)))
-                  for a, b in spans]
+        bounds = [(int(round(a * rec.sfreq)), int(round(b * rec.sfreq))) for a, b in spans]
         return cls._build(rec, bounds)
 
     @classmethod
@@ -98,13 +99,15 @@ class IntervalGrid:
         rows = []
         for i0, i1 in bounds:
             seg = cov[i0:i1]
-            rows.append(dict(
-                t_start=i0 / rec.sfreq,
-                t_end=i1 / rec.sfreq,
-                i_start=i0,
-                i_stop=i1,
-                coverage=float(seg.mean()) if seg.size else 0.0,
-            ))
+            rows.append(
+                dict(
+                    t_start=i0 / rec.sfreq,
+                    t_end=i1 / rec.sfreq,
+                    i_start=i0,
+                    i_stop=i1,
+                    coverage=float(seg.mean()) if seg.size else 0.0,
+                )
+            )
         table = pd.DataFrame(rows)
         table.index = pd.RangeIndex(len(table), name="interval")
         return cls(table, rec.sfreq)

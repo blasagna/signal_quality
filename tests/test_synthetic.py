@@ -4,6 +4,7 @@ This is the notebook's worked example, so if the generator drifts the notebook
 starts teaching something false. Detection is scored against the generator's own
 time-resolved ground truth.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,8 +27,18 @@ SPECTRAL_FLAGS = {"LINE_NOISE", "EMG"}
 @pytest.fixture(scope="module")
 def demo():
     rec, truth = sq.make_demo_recording()
-    mf = sq.compute([M.RMS(), M.LineRatio(), M.EMGFraction(), M.MaxCorrelation(),
-                     M.FlatFraction(), M.ClipFraction(), M.PeakToPeak()], rec)
+    mf = sq.compute(
+        [
+            M.RMS(),
+            M.LineRatio(),
+            M.EMGFraction(),
+            M.MaxCorrelation(),
+            M.FlatFraction(),
+            M.ClipFraction(),
+            M.PeakToPeak(),
+        ],
+        rec,
+    )
     flags = sq.apply_filters(mf, sq.DEFAULT_FILTERS)
     verdicts = sq.verdict(flags, mf)
     return rec, truth, mf, flags, verdicts
@@ -72,8 +83,8 @@ def test_episodic_faults_are_not_flagged_outside_their_episode(demo):
         after = _flags_in(flags, mf, r.channel, r.t_end + margin, 1e9)
         outside = (before | after) - EXPECTED_SIDE_EFFECTS
         assert r.injected not in outside, (
-            f"{r.channel}: {r.injected} leaked outside its "
-            f"{r.t_start:.0f}-{r.t_end:.0f}s episode")
+            f"{r.channel}: {r.injected} leaked outside its {r.t_start:.0f}-{r.t_end:.0f}s episode"
+        )
 
 
 def test_segments_recover_episode_timing(demo):
@@ -81,8 +92,9 @@ def test_segments_recover_episode_timing(demo):
     seg = sq.bad_segments(verdicts, mf, min_duration=2.0)
 
     for r in truth[truth["t_start"] > 0].itertuples():
-        s = seg[(seg["channel"] == r.channel)
-                & (seg["t_end"] > r.t_start) & (seg["t_start"] < r.t_end)]
+        s = seg[
+            (seg["channel"] == r.channel) & (seg["t_end"] > r.t_start) & (seg["t_start"] < r.t_end)
+        ]
         assert len(s), f"no segment covers {r.channel} {r.t_start:.0f}-{r.t_end:.0f}s"
         tol = 6.0 if r.injected in SPECTRAL_FLAGS else 2.5
         assert abs(s["t_start"].min() - r.t_start) < tol
@@ -98,8 +110,9 @@ def test_clean_channels_are_never_flagged(demo):
     assert len(clean) > 5
 
     summary = sq.channel_summary(verdicts)
-    assert (summary.loc[clean, "verdict"] == "good").all(), (
-        summary.loc[clean][summary.loc[clean, "verdict"] != "good"])
+    assert (summary.loc[clean, "verdict"] == "good").all(), summary.loc[clean][
+        summary.loc[clean, "verdict"] != "good"
+    ]
 
 
 def test_sustained_faults_dominate_their_channel(demo):
@@ -116,16 +129,15 @@ def test_metric_values_are_physically_plausible(demo):
     _, truth, mf, _, _ = demo
     t = mf.table
     faulty = set(truth["channel"])
-    healthy = [c for c in t.index.get_level_values("channel").unique()
-               if c not in faulty]
+    healthy = [c for c in t.index.get_level_values("channel").unique() if c not in faulty]
     h = t.loc[healthy]
 
-    assert 5 < h["rms"].median() < 60                     # µV, scalp EEG
+    assert 5 < h["rms"].median() < 60  # µV, scalp EEG
     assert h["max_corr"].median() > 0.6
     assert h["emg_pct"].median() < 15
     line_ch = set(truth[truth["injected"] == "LINE_NOISE"]["channel"])
     bad_line = t.loc[sorted(line_ch), "line_ratio"].median()
-    assert 300 < bad_line < 1e6, bad_line       # bad, but not absurd
+    assert 300 < bad_line < 1e6, bad_line  # bad, but not absurd
 
 
 def test_recording_level_faults(demo):

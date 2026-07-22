@@ -1,4 +1,5 @@
 """The joined metric table."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -33,25 +34,27 @@ class MetricFrame:
     def __repr__(self) -> str:
         n_ch = self.table.index.get_level_values("channel").nunique()
         n_iv = self.table.index.get_level_values("interval").nunique()
-        return (f"<MetricFrame {n_ch} channels x {n_iv} intervals, "
-                f"metrics: {', '.join(self.metrics)}>")
+        return (
+            f"<MetricFrame {n_ch} channels x {n_iv} intervals, metrics: {', '.join(self.metrics)}>"
+        )
 
     @property
     def metrics(self) -> list[str]:
         """Metric column names, excluding the interval bookkeeping columns."""
-        return [c for c in self.table.columns
-                if c not in ("t_start", "t_end", "coverage")]
+        return [c for c in self.table.columns if c not in ("t_start", "t_end", "coverage")]
 
     def long(self) -> pd.DataFrame:
         """Tidy view: one row per (channel, interval, metric, value).
 
         Convenient for faceted plotting and for comparing metrics on one axis.
         """
-        return (self.table[self.metrics]
-                .stack(future_stack=True)
-                .rename("value")
-                .reset_index()
-                .rename(columns={"level_2": "metric"}))
+        return (
+            self.table[self.metrics]
+            .stack(future_stack=True)
+            .rename("value")
+            .reset_index()
+            .rename(columns={"level_2": "metric"})
+        )
 
     def per_channel(self, agg="median") -> pd.DataFrame:
         """Collapse the interval axis, giving one row per channel."""
@@ -59,6 +62,9 @@ class MetricFrame:
 
     def interval_times(self) -> pd.DataFrame:
         """The interval bookkeeping columns, deduplicated to one row each."""
-        return (self.table[["t_start", "t_end", "coverage"]]
-                .droplevel("channel")
-                .groupby(level="interval").first())
+        return (
+            self.table[["t_start", "t_end", "coverage"]]
+            .droplevel("channel")
+            .groupby(level="interval")
+            .first()
+        )

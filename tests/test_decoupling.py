@@ -6,6 +6,7 @@ filtering (``core/context.py``), and standard electrode geometry
 quietly becomes EEG-only and the xarray model stops earning its keep — so this
 is enforced rather than merely documented.
 """
+
 from __future__ import annotations
 
 import ast
@@ -47,14 +48,17 @@ def test_mne_only_at_the_edges(path):
         pytest.fail(
             f"{rel} imports MNE but is not an edge module. Metrics and filters "
             f"must work on xarray/numpy alone; add an adapter or extend ALLOWED "
-            f"with a justification.")
+            f"with a justification."
+        )
 
 
 def test_metrics_and_filters_are_mne_free():
     """Stated explicitly, so the intent survives changes to ALLOWED."""
-    offenders = [p.relative_to(PKG).as_posix()
-                 for p in list((PKG / "metrics").rglob("*.py")) + [PKG / "filters.py"]
-                 if _imports_mne(p)]
+    offenders = [
+        p.relative_to(PKG).as_posix()
+        for p in list((PKG / "metrics").rglob("*.py")) + [PKG / "filters.py"]
+        if _imports_mne(p)
+    ]
     assert offenders == []
 
 

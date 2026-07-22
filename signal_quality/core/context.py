@@ -20,6 +20,7 @@ Filtering uses ``mne.filter.filter_data``, which takes and returns a plain
 ndarray. That is a function call, not a data-model dependency — and it keeps
 results numerically identical to the reference analysis this library ports.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -65,7 +66,8 @@ class MetricContext:
         if i_start < v0 or i_stop > v1:
             raise ValueError(
                 f"samples [{i_start}, {i_stop}) fall outside the loaded view "
-                f"[{v0}, {v1}) — the block was not padded enough for this metric")
+                f"[{v0}, {v1}) — the block was not padded enough for this metric"
+            )
         return slice(i_start - v0, i_stop - v0)
 
     # -- view-scoped arrays ---------------------------------------------------
@@ -76,6 +78,7 @@ class MetricContext:
         Microvolts rather than volts because every threshold in this field is
         quoted in µV.
         """
+
         def go():
             v0, v1 = self._view
             return self.rec.ds["signal"].values[:, v0:v1] * 1e6
@@ -101,16 +104,18 @@ class MetricContext:
 
     def filtered(self, l_freq: float = 1.0, h_freq: float = 45.0) -> np.ndarray:
         """Band-limited signal over the view, in µV. Cached per band."""
+
         def go():
             import mne
-            return mne.filter.filter_data(
-                self.signal, self.sfreq, l_freq, h_freq, verbose="error")
+
+            return mne.filter.filter_data(self.signal, self.sfreq, l_freq, h_freq, verbose="error")
 
         return self._memo(("filtered", l_freq, h_freq), go)
 
     # -- interval views -------------------------------------------------------
-    def analysis_bounds(self, i_start: int, i_stop: int,
-                        min_analysis_s: float = 0.0) -> tuple[int, int]:
+    def analysis_bounds(
+        self, i_start: int, i_stop: int, min_analysis_s: float = 0.0
+    ) -> tuple[int, int]:
         """Widen an interval to at least ``min_analysis_s``, centered.
 
         Clamped to the recording, so intervals at the very start or end are
@@ -164,8 +169,9 @@ class MetricContext:
         m = self.covered[i_start:i_stop]
         return float(m.mean()) if m.size else 0.0
 
-    def welch(self, i_start, i_stop, band=None, nperseg_s: float = 4.0,
-              min_analysis_s: float = 0.0):
+    def welch(
+        self, i_start, i_stop, band=None, nperseg_s: float = 4.0, min_analysis_s: float = 0.0
+    ):
         """Welch PSD for an interval -> ``(freqs, power[n_chan, n_freqs])``.
 
         The interval is widened to ``min_analysis_s`` first, then gap samples

@@ -7,6 +7,7 @@ This is the only module outside ``io/`` that touches MNE, and it does so purely
 to look up standard 10-20 coordinates: it takes channel names and returns a
 plain ``(n, 2)`` array of xy positions, so nothing MNE-shaped reaches ``viz/``.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -40,8 +41,7 @@ def place(ch_names, montage: str = "standard_1020", sfreq: float = 1000.0):
 
     mont = info.get_montage()
     pos = mont.get_positions()["ch_pos"] if mont is not None else {}
-    keep = [i for i, n in enumerate(renamed)
-            if n in pos and np.isfinite(list(pos[n])).all()]
+    keep = [i for i, n in enumerate(renamed) if n in pos and np.isfinite(list(pos[n])).all()]
 
     if not keep:
         return [], np.zeros((0, 2)), names
@@ -49,6 +49,7 @@ def place(ch_names, montage: str = "standard_1020", sfreq: float = 1000.0):
     try:
         sub = mne.pick_info(info, np.asarray(keep))
         from mne.channels.layout import _find_topomap_coords
+
         xy = _find_topomap_coords(sub, picks=list(range(len(keep))))
     except Exception:
         # Fall back to a plain top-down projection of the 3-D coordinates.

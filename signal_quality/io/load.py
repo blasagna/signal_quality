@@ -5,6 +5,7 @@ lossless HDF5 archive go through the vendored decoder, which preserves raw ADC
 counts and the sample-stamp tables; everything else goes through MNE and loses
 them (clipping detection and timestamp checks degrade gracefully).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,8 +17,7 @@ from ..core.recording import Recording, build_dataset
 from . import xltek
 
 
-def load(path, line_freq: float = 60.0, verbose: bool = False,
-         strict: bool = False) -> Recording:
+def load(path, line_freq: float = 60.0, verbose: bool = False, strict: bool = False) -> Recording:
     """Load any supported recording.
 
     Parameters
@@ -39,8 +39,8 @@ def load(path, line_freq: float = 60.0, verbose: bool = False,
         if not list(path.glob("*.erd")):
             raise ValueError(f"{path} is a directory but contains no .erd file")
         return _from_xltek_dict(
-            xltek.decode_study(path, verbose=verbose, strict=strict),
-            path, line_freq)
+            xltek.decode_study(path, verbose=verbose, strict=strict), path, line_freq
+        )
 
     if path.suffix.lower() in (".h5", ".hdf5"):
         return _from_lossless_hdf5(path, line_freq)
@@ -99,18 +99,18 @@ def _from_lossless_hdf5(path, line_freq) -> Recording:
             sfreq=float(h.attrs["sfreq"]),
             ch_names=[x.decode() for x in h["ch_names"][()]],
             ch_types=[x.decode() for x in h["ch_types"][()]],
-            ch_unit=([x.decode() for x in h["ch_unit"][()]]
-                     if "ch_unit" in h else None),
+            ch_unit=([x.decode() for x in h["ch_unit"][()]] if "ch_unit" in h else None),
             meas_date=md or None,
             first_stamp=int(h.attrs.get("first_stamp", 0)),
-            annotations=list(zip(
-                h["ann_onset"][()].tolist(),
-                h["ann_duration"][()].tolist(),
-                [x.decode() for x in h["ann_description"][()]],
-                strict=True,
-            )),
-            provenance={k[5:]: v for k, v in h.attrs.items()
-                        if k.startswith("prov_")},
+            annotations=list(
+                zip(
+                    h["ann_onset"][()].tolist(),
+                    h["ann_duration"][()].tolist(),
+                    [x.decode() for x in h["ann_description"][()]],
+                    strict=True,
+                )
+            ),
+            provenance={k[5:]: v for k, v in h.attrs.items() if k.startswith("prov_")},
         )
     return _from_xltek_dict(s, path, line_freq)
 

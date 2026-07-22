@@ -5,6 +5,7 @@ An automated flag is a hypothesis. These plots are how you falsify it — a
 "clipping" flag driven by three isolated samples, are both things only a look at
 the signal will reveal.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,9 +14,17 @@ from ..core.context import MetricContext
 from ._scale import add_scale_bar
 
 
-def plot_overview(rec, ch_type=None, band=(0.5, 40.0), ax=None, step=None,
-                  max_points: int = 1500, clip: bool = True, title=None,
-                  normalize="auto"):
+def plot_overview(
+    rec,
+    ch_type=None,
+    band=(0.5, 40.0),
+    ax=None,
+    step=None,
+    max_points: int = 1500,
+    clip: bool = True,
+    title=None,
+    normalize="auto",
+):
     """Every channel over the whole recording — the first thing to look at.
 
     Metrics summarise; this is the unsummarised signal, and it catches things no
@@ -89,8 +98,7 @@ def plot_overview(rec, ch_type=None, band=(0.5, 40.0), ax=None, step=None,
             if frac[i] <= 0.02:
                 break
             peak = max(abs(float(hi[i].max())), abs(float(lo[i].min())))
-            clipped.append(f"{names[i]} ({100 * frac[i]:.0f}% off-scale, "
-                           f"peak {peak:,.0f} {unit})")
+            clipped.append(f"{names[i]} ({100 * frac[i]:.0f}% off-scale, peak {peak:,.0f} {unit})")
         lo = np.clip(lo, -limit, limit)
         hi = np.clip(hi, -limit, limit)
 
@@ -106,8 +114,7 @@ def plot_overview(rec, ch_type=None, band=(0.5, 40.0), ax=None, step=None,
     for s in np.where(edges_c == -1)[0] + 1:
         nxt = np.where(edges_c[s:] == 1)[0]
         e = s + (nxt[0] + 1 if len(nxt) else len(cov) - s)
-        ax.axvspan(s / rec.sfreq / 60, e / rec.sfreq / 60, color="#c62828",
-                   alpha=0.18, zorder=0)
+        ax.axvspan(s / rec.sfreq / 60, e / rec.sfreq / 60, color="#c62828", alpha=0.18, zorder=0)
 
     ax.set_yticks([(n_ch - 1 - i) * step for i in range(n_ch)])
     ax.set_yticklabels(names, fontsize=7)
@@ -118,22 +125,37 @@ def plot_overview(rec, ch_type=None, band=(0.5, 40.0), ax=None, step=None,
 
     band_txt = f"{band[0]:g}–{band[1]:g} Hz" if band else "wideband"
     scale_txt = "per-channel SD" if normalize else "shared µV scale"
-    ax.set_title(title or f"All {n_ch} channels, whole recording "
-                          f"({band_txt}; {scale_txt}; red = gap)")
+    ax.set_title(
+        title or f"All {n_ch} channels, whole recording ({band_txt}; {scale_txt}; red = gap)"
+    )
     add_scale_bar(ax, step, unit)
     if clipped:
         shown, extra = clipped[:4], len(clipped) - 4
         note = "clipped to lane for display: " + ", ".join(shown)
         if extra > 0:
             note += f", and {extra} more"
-        ax.text(0.0, -0.16 if n_ch < 20 else -0.09, note,
-                transform=ax.transAxes, fontsize=7, style="italic", color="#c62828")
+        ax.text(
+            0.0,
+            -0.16 if n_ch < 20 else -0.09,
+            note,
+            transform=ax.transAxes,
+            fontsize=7,
+            style="italic",
+            color="#c62828",
+        )
     return ax
 
 
-def plot_channel_snippet(rec, channels, t_start: float = 0.0,
-                         duration: float = 10.0, band=(1.0, 45.0), ax=None,
-                         step: float = 150.0, title=None):
+def plot_channel_snippet(
+    rec,
+    channels,
+    t_start: float = 0.0,
+    duration: float = 10.0,
+    band=(1.0, 45.0),
+    ax=None,
+    step: float = 150.0,
+    title=None,
+):
     """Stacked traces for a few channels over a short window."""
     import matplotlib.pyplot as plt
 
@@ -162,15 +184,19 @@ def plot_channel_snippet(rec, channels, t_start: float = 0.0,
     # the channel-name ticks cannot convey it.
     peak = float(np.abs(seg).max()) if seg.size else 0.0
     ax.set_ylabel(f"channel  (lane spacing {step:g} µV)")
-    ax.set_title(title or f"Signal t={t_start:.0f}–{t_start + duration:.0f}s "
-                          f"({step:g} µV/div; peak |x| = {peak:,.0f} µV)")
+    ax.set_title(
+        title
+        or f"Signal t={t_start:.0f}–{t_start + duration:.0f}s "
+        f"({step:g} µV/div; peak |x| = {peak:,.0f} µV)"
+    )
     ax.margins(y=0.02)
     add_scale_bar(ax, step, "µV")
     return ax
 
 
-def plot_flagged_examples(rec, mf, flags, flag: str, metric: str,
-                          n: int = 3, duration: float = 10.0, band=(1.0, 45.0)):
+def plot_flagged_examples(
+    rec, mf, flags, flag: str, metric: str, n: int = 3, duration: float = 10.0, band=(1.0, 45.0)
+):
     """Worst flagged channels next to the best unflagged ones, same time window.
 
     Side-by-side at identical gain is the honest comparison: it shows whether
@@ -190,10 +216,24 @@ def plot_flagged_examples(rec, mf, flags, flag: str, metric: str,
 
     t0 = _quiet_window(rec, duration)
     fig, axes = plt.subplots(2, 1, figsize=(13, 7), sharex=True)
-    plot_channel_snippet(rec, bad, t0, duration, band=band, ax=axes[0],
-                         title=f"Flagged {flag} — worst {len(bad)} by {metric}")
-    plot_channel_snippet(rec, good, t0, duration, band=band, ax=axes[1],
-                         title=f"Unflagged — best {len(good)} by {metric}")
+    plot_channel_snippet(
+        rec,
+        bad,
+        t0,
+        duration,
+        band=band,
+        ax=axes[0],
+        title=f"Flagged {flag} — worst {len(bad)} by {metric}",
+    )
+    plot_channel_snippet(
+        rec,
+        good,
+        t0,
+        duration,
+        band=band,
+        ax=axes[1],
+        title=f"Unflagged — best {len(good)} by {metric}",
+    )
     fig.tight_layout()
     return fig
 
@@ -207,6 +247,6 @@ def _quiet_window(rec, duration: float) -> float:
     # First fully-covered window, scanning at 1 s resolution.
     stride = max(1, int(rec.sfreq))
     for i in range(0, len(cov) - n, stride):
-        if cov[i:i + n].all():
+        if cov[i : i + n].all():
             return i / rec.sfreq
     return 0.0

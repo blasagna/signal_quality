@@ -1,4 +1,5 @@
 """Generic integrity checks: data existence, clock sanity, channel alignment."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -36,8 +37,7 @@ def test_irregular_sample_period_is_caught(gapped_rec, stamp_tables):
 
 def test_overlapping_packets_are_caught(gapped_rec, stamp_tables):
     rec = _with_stamps(gapped_rec, stamp_tables["overlapping"])
-    assert "overlapping_packets" in set(
-        integrity.timestamp_anomalies(rec)["check"])
+    assert "overlapping_packets" in set(integrity.timestamp_anomalies(rec)["check"])
 
 
 def test_stamp_times_are_offset_by_first_stamp(gapped_rec, stamp_tables):
@@ -55,8 +55,7 @@ def test_stamp_times_are_offset_by_first_stamp(gapped_rec, stamp_tables):
     assert 0 <= bad["t_start"].iloc[0] <= rec.duration
 
 
-def test_recording_gap_is_not_double_reported_as_a_clock_fault(gapped_rec,
-                                                              stamp_tables):
+def test_recording_gap_is_not_double_reported_as_a_clock_fault(gapped_rec, stamp_tables):
     """A stamp jump that coincides with a known gap is the gap, not a second,
     independent clock anomaly."""
     sf = gapped_rec.sfreq
@@ -75,9 +74,10 @@ def test_recording_gap_is_not_double_reported_as_a_clock_fault(gapped_rec,
     # Sanity: the same jump *not* backed by a gap must still be reported, so the
     # test is proving suppression rather than a dead check.
     shifted = etc.copy()
-    shifted["samplestamp"][len(before):] += int(3 * sf)
+    shifted["samplestamp"][len(before) :] += int(3 * sf)
     assert "irregular_sampling" in set(
-        integrity.timestamp_anomalies(_with_stamps(gapped_rec, shifted))["check"])
+        integrity.timestamp_anomalies(_with_stamps(gapped_rec, shifted))["check"]
+    )
 
 
 def test_well_formed_stamps_are_quiet(gapped_rec, stamp_tables):
@@ -94,8 +94,9 @@ def test_missing_stamp_table_is_reported_as_unknown(clean_rec):
 
 
 def test_reader_defects_surface_as_alignment_findings(clean_rec):
-    clean_rec.defects = [dict(check="mixed_sample_rates", channels=None,
-                              detail="two distinct rates")]
+    clean_rec.defects = [
+        dict(check="mixed_sample_rates", channels=None, detail="two distinct rates")
+    ]
     out = integrity.channel_alignment(clean_rec)
     assert "mixed_sample_rates" in set(out["check"])
     assert out["severity"].iloc[0] == "bad"
@@ -108,14 +109,18 @@ def test_dead_channel_detected(faulty_rec):
 
 
 def test_check_integrity_returns_empty_frame_when_clean(clean_rec):
-    out = sq.check_integrity(clean_rec, checks=(integrity.coverage_gaps,
-                                                integrity.channel_alignment))
+    out = sq.check_integrity(
+        clean_rec, checks=(integrity.coverage_gaps, integrity.channel_alignment)
+    )
     assert len(out) == 0
     assert list(out.columns) == integrity.COLUMNS
 
 
 def _with_stamps(rec, etc, first_stamp=0):
-    return Recording(rec.ds, rec.source_path, rec.annotations,
-                     dict(rec.provenance, stamps=dict(etc=etc, stc=None),
-                          first_stamp=first_stamp),
-                     rec.defects)
+    return Recording(
+        rec.ds,
+        rec.source_path,
+        rec.annotations,
+        dict(rec.provenance, stamps=dict(etc=etc, stc=None), first_stamp=first_stamp),
+        rec.defects,
+    )

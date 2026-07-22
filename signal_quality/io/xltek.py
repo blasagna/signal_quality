@@ -21,6 +21,7 @@ classic multi-segment layout (<name>_000.erd, _001.erd, ...).
     from xltek import read_raw_xltek
     raw = read_raw_xltek("/path/to/STUDY_DIR")   # -> mne.io.RawArray
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -32,11 +33,11 @@ import numpy as np
 
 # --- headbox conversion table (uV per raw unit), ported from the public -------
 # --- wonambi/ktlx description; depends on the amplifier "headbox" model. ------
-_EEG = lambda n, db: np.ones(n) * (8711. / (2 ** 21 - 0.5)) * 2 ** db
-_DC10800 = lambda n, db: np.ones(n) * ((10800000 / 65536) / (2 ** 6)) * 2 ** db
-_DC10000 = lambda n, db: np.ones(n) * ((10000000 / 65536) / (2 ** 6)) * 2 ** db
-_UNIT = lambda n, db: np.ones(n) * (1 / (2 ** 6)) * 2 ** db
-_OLD = lambda n, db: np.ones(n) * ((5000000. / (2 ** 10 - 0.5)) / (2 ** 6)) * 2 ** db
+_EEG = lambda n, db: np.ones(n) * (8711.0 / (2**21 - 0.5)) * 2**db
+_DC10800 = lambda n, db: np.ones(n) * ((10800000 / 65536) / (2**6)) * 2**db
+_DC10000 = lambda n, db: np.ones(n) * ((10000000 / 65536) / (2**6)) * 2**db
+_UNIT = lambda n, db: np.ones(n) * (1 / (2**6)) * 2**db
+_OLD = lambda n, db: np.ones(n) * ((5000000.0 / (2**10 - 0.5)) / (2**6)) * 2**db
 
 
 def _conversion(headbox_type, n_chan, db):
@@ -75,41 +76,59 @@ def _cstr(b):
 def read_erd_header(erd_path: Path) -> dict:
     """Parse the fixed header of an .erd/.etc/.stc file (schema 8/9)."""
     with open(erd_path, "rb") as f:
-        f.read(16)                                         # GUID
+        f.read(16)  # GUID
         schema, base = struct.unpack("<HH", f.read(4))
         if schema not in (7, 8, 9):
             raise NotImplementedError(f"file_schema {schema} not supported")
-        ctime, = struct.unpack("<i", f.read(4))
-        f.read(8)                                          # patient_id, study_id
-        last = _cstr(f.read(80)); first = _cstr(f.read(80))
-        f.read(80)                                         # middle name
+        (ctime,) = struct.unpack("<i", f.read(4))
+        f.read(8)  # patient_id, study_id
+        last = _cstr(f.read(80))
+        first = _cstr(f.read(80))
+        f.read(80)  # middle name
         pid = _cstr(f.read(80))
         assert f.tell() == 352
-        sfreq, = struct.unpack("<d", f.read(8))
-        n_chan, = struct.unpack("<i", f.read(4))
-        deltabits, = struct.unpack("<i", f.read(4))
+        (sfreq,) = struct.unpack("<d", f.read(8))
+        (n_chan,) = struct.unpack("<i", f.read(4))
+        (deltabits,) = struct.unpack("<i", f.read(4))
         phys_chan = struct.unpack(f"<{n_chan}i", f.read(4 * n_chan))
         f.seek(4464)
         headbox_type = struct.unpack("<4i", f.read(16))
         headbox_sn = struct.unpack("<4i", f.read(16))
-        f.read(40 + 10 + 10)                               # sw/hw version strings
-        discardbits, = struct.unpack("<i", f.read(4))
+        f.read(40 + 10 + 10)  # sw/hw version strings
+        (discardbits,) = struct.unpack("<i", f.read(4))
         shorted = freq_factor = None
         if schema >= 8:
             shorted = struct.unpack("<1024h", f.read(2048))[:n_chan]
             freq_factor = struct.unpack("<1024h", f.read(2048))[:n_chan]
-    return dict(file_schema=schema, creation_time=ctime, sfreq=sfreq,
-                n_chan=n_chan, deltabits=deltabits, discardbits=discardbits,
-                headbox_type=headbox_type, headbox_sn=headbox_sn,
-                shorted=shorted, freq_factor=freq_factor, phys_chan=phys_chan,
-                patient_id=pid, first_name=first, last_name=last)
+    return dict(
+        file_schema=schema,
+        creation_time=ctime,
+        sfreq=sfreq,
+        n_chan=n_chan,
+        deltabits=deltabits,
+        discardbits=discardbits,
+        headbox_type=headbox_type,
+        headbox_sn=headbox_sn,
+        shorted=shorted,
+        freq_factor=freq_factor,
+        phys_chan=phys_chan,
+        patient_id=pid,
+        first_name=first,
+        last_name=last,
+    )
 
 
 def read_etc(etc_path: Path) -> np.ndarray:
     """Table of contents: one record per compressed packet."""
-    dt = np.dtype([("offset", "<i4"), ("samplestamp", "<i4"),
-                   ("sample_num", "<i4"), ("sample_span", "<i2"),
-                   ("unknown", "<i2")])
+    dt = np.dtype(
+        [
+            ("offset", "<i4"),
+            ("samplestamp", "<i4"),
+            ("sample_num", "<i4"),
+            ("sample_span", "<i2"),
+            ("unknown", "<i2"),
+        ]
+    )
     with open(etc_path, "rb") as f:
         f.seek(352)
         return np.fromfile(f, dtype=dt)
@@ -117,11 +136,17 @@ def read_etc(etc_path: Path) -> np.ndarray:
 
 def read_stc(stc_path: Path):
     """Segment table of contents -> list of (segment_name, start, end)."""
-    dt = np.dtype([("segment_name", "S256"), ("start_stamp", "<i4"),
-                   ("end_stamp", "<i4"), ("sample_num", "<i4"),
-                   ("sample_span", "<i4")])
+    dt = np.dtype(
+        [
+            ("segment_name", "S256"),
+            ("start_stamp", "<i4"),
+            ("end_stamp", "<i4"),
+            ("sample_num", "<i4"),
+            ("sample_span", "<i4"),
+        ]
+    )
     with open(stc_path, "rb") as f:
-        f.seek(352 + 4 + 4 + 48)                           # skip general stc fields
+        f.seek(352 + 4 + 4 + 48)  # skip general stc fields
         stamps = np.fromfile(f, dtype=dt)
     return stamps
 
@@ -136,7 +161,7 @@ def _decode_packet(f, offset, n_smp, n_chan, abs_delta=-1):
         if ev not in (b"\x00", b"\x01"):
             raise ValueError(f"bad event byte {ev!r} at sample {i}")
         mbytes = np.frombuffer(f.read(l_mask), dtype=np.uint8)
-        bits = np.unpackbits(mbytes[::-1])[:-n_chan - 1:-1].astype(bool)   # True=int16
+        bits = np.unpackbits(mbytes[::-1])[: -n_chan - 1 : -1].astype(bool)  # True=int16
         n_bytes = int(bits.sum()) + bits.size
         codes = np.where(bits, b"h", b"b")
         fmt = b"<" + codes.tobytes()
@@ -181,16 +206,26 @@ def decode_study(study_dir, verbose=True, strict=False):
         which = [i for i, s in enumerate(hdr["shorted"]) if s]
         if strict:
             raise NotImplementedError("shorted channels present; not handled")
-        defects.append(dict(check="shorted_channels", channels=which,
-                            detail=f"{len(which)} channel(s) marked shorted in the header; "
-                                   "their signal is not meaningful"))
+        defects.append(
+            dict(
+                check="shorted_channels",
+                channels=which,
+                detail=f"{len(which)} channel(s) marked shorted in the header; "
+                "their signal is not meaningful",
+            )
+        )
     if hdr["freq_factor"] and len(set(hdr["freq_factor"])) > 1:
         rates = sorted(set(hdr["freq_factor"]))
         if strict:
             raise NotImplementedError("mixed per-channel sample rates; not handled")
-        defects.append(dict(check="mixed_sample_rates", channels=None,
-                            detail=f"per-channel freq_factor takes {len(rates)} distinct values "
-                                   f"{rates}; channels cannot share one time axis"))
+        defects.append(
+            dict(
+                check="mixed_sample_rates",
+                channels=None,
+                detail=f"per-channel freq_factor takes {len(rates)} distinct values "
+                f"{rates}; channels cannot share one time axis",
+            )
+        )
 
     factor_uV = _conversion(hdr["headbox_type"], n_chan, hdr["discardbits"])
 
@@ -209,12 +244,13 @@ def decode_study(study_dir, verbose=True, strict=False):
         print(f"decoding {len(etc)} packets ({N} samples x {n_chan} ch)...")
     with open(base.with_suffix(".erd"), "rb") as f:
         for r in range(len(etc)):
-            ss = int(ss_all[r]); span = int(span_all[r])
+            ss = int(ss_all[r])
+            span = int(span_all[r])
             pkt = _decode_packet(f, int(etc["offset"][r]), span, n_chan)
             s0 = ss - beg
-            w = min(span, N - s0)                          # clip defensively
-            counts[:, s0:s0 + w] = pkt[:, :w]
-            covered[s0:s0 + w] = True
+            w = min(span, N - s0)  # clip defensively
+            counts[:, s0 : s0 + w] = pkt[:, :w]
+            covered[s0 : s0 + w] = True
 
     named = _channel_names(base) or [f"ch{i:03d}" for i in range(n_chan)]
     ch_names = named[:n_chan]
@@ -224,20 +260,37 @@ def decode_study(study_dir, verbose=True, strict=False):
     meas_date = md.replace(tzinfo=_dt.UTC) if md is not None else None
     annotations = [(t, 0.0, name) for t, name in _annotations(base, sfreq, beg)]
     if len(named) != n_chan:
-        defects.append(dict(check="channel_count_mismatch", channels=None,
-                            detail=f"header declares {n_chan} channels, montage names "
-                                   f"{len(named)}"))
-    return dict(counts=counts, factor_uV=factor_uV, covered=covered, sfreq=sfreq,
-                n_chan=n_chan, ch_names=ch_names, ch_types=ch_types, ch_unit=ch_unit,
-                meas_date=meas_date, first_stamp=beg, annotations=annotations,
-                stamps=dict(etc=etc, stc=stamps), defects=defects,
-                provenance=dict(file_schema=hdr["file_schema"],
-                                headbox_type=list(hdr["headbox_type"]),
-                                discardbits=hdr["discardbits"],
-                                patient_last=hdr["last_name"],
-                                patient_first=hdr["first_name"],
-                                patient_id=hdr["patient_id"],
-                                study=base.name))
+        defects.append(
+            dict(
+                check="channel_count_mismatch",
+                channels=None,
+                detail=f"header declares {n_chan} channels, montage names {len(named)}",
+            )
+        )
+    return dict(
+        counts=counts,
+        factor_uV=factor_uV,
+        covered=covered,
+        sfreq=sfreq,
+        n_chan=n_chan,
+        ch_names=ch_names,
+        ch_types=ch_types,
+        ch_unit=ch_unit,
+        meas_date=meas_date,
+        first_stamp=beg,
+        annotations=annotations,
+        stamps=dict(etc=etc, stc=stamps),
+        defects=defects,
+        provenance=dict(
+            file_schema=hdr["file_schema"],
+            headbox_type=list(hdr["headbox_type"]),
+            discardbits=hdr["discardbits"],
+            patient_last=hdr["last_name"],
+            patient_first=hdr["first_name"],
+            patient_id=hdr["patient_id"],
+            study=base.name,
+        ),
+    )
 
 
 def _gap_annots(covered, sfreq):
@@ -255,8 +308,9 @@ def _raw_from_decoded(s):
     """Build an ``mne.io.RawArray`` from a decode_study() dict (single code path
     for both the .erd reader and the HDF5 reader, guaranteeing identical output)."""
     import mne
+
     data = s["counts"].astype(np.float64)
-    data *= s["factor_uV"][:, None] * 1e-6               # counts -> uV -> V
+    data *= s["factor_uV"][:, None] * 1e-6  # counts -> uV -> V
     info = mne.create_info(list(s["ch_names"]), s["sfreq"], list(s["ch_types"]))
     raw = mne.io.RawArray(data, info, verbose="error")
     if s["meas_date"] is not None:
@@ -286,8 +340,9 @@ def _channel_names(base: Path):
         i = txt.find("ChanNames")
         if i == -1:
             continue
-        a = txt.find("(", i); b = txt.find(")", a)
-        return [x.strip('" ') for x in txt[a + 1:b].split(",") if x.strip('" ')]
+        a = txt.find("(", i)
+        b = txt.find(")", a)
+        return [x.strip('" ') for x in txt[a + 1 : b].split(",") if x.strip('" ')]
     return None
 
 
@@ -296,7 +351,7 @@ def _snc_start_utc(base: Path):
     if not p.exists():
         return None
     b = p.read_bytes()
-    stamp, lo, hi = struct.unpack("<iII", b[0x160:0x160 + 12])
+    stamp, lo, hi = struct.unpack("<iII", b[0x160 : 0x160 + 12])
     ft = (hi << 32) | lo
     return _dt.datetime(1601, 1, 1) + _dt.timedelta(microseconds=ft / 10)
 
@@ -310,10 +365,10 @@ def _annotations(base: Path, sfreq, beg):
         data = p.read_bytes()
         pos, out = 352, []
         while pos + 16 <= len(data):
-            typ, length, prev, unused = struct.unpack("<iiii", data[pos:pos + 16])
+            typ, length, prev, unused = struct.unpack("<iiii", data[pos : pos + 16])
             if typ == 0 or length <= 16 or pos + length > len(data):
                 break
-            body = data[pos + 16:pos + length].decode("latin-1", "replace")
+            body = data[pos + 16 : pos + length].decode("latin-1", "replace")
             pos += length
             mtext = re.search(r'"Text",\s*"([^"]*)"', body)
             mstamp = re.search(r'"Stamp",\s*(\d+)', body)
@@ -322,7 +377,7 @@ def _annotations(base: Path, sfreq, beg):
                 continue
             if mtext.group(1) == "Analyzed Data Note":
                 continue
-            user = (muser.group(1).split()[0] if muser and muser.group(1) else "?")
+            user = muser.group(1).split()[0] if muser and muser.group(1) else "?"
             t = (int(mstamp.group(1)) - beg) / sfreq
             out.append((t, f"{mtext.group(1)} ({user})"))
         return out
@@ -352,6 +407,7 @@ def export_hdf5(study_dir, out_path):
     metadata, in a self-describing HDF5 file. Read back with read_raw_hdf5().
     Nothing is quantized or resampled; recovers the decoder output exactly."""
     import h5py
+
     s = decode_study(study_dir)
     with h5py.File(out_path, "w") as h:
         h.attrs["format"] = "xltek-lossless-hdf5"
@@ -363,14 +419,20 @@ def export_hdf5(study_dir, out_path):
             "Lossless archive of a Natus/XLTEK NeuroWorks EEG study. "
             "microvolts = counts.astype(float64) * factor_uV[:, None]; "
             "volts = microvolts * 1e-6. Samples where covered==0 are recording "
-            "gaps (zero-filled). Load with xltek.read_raw_hdf5().")
+            "gaps (zero-filled). Load with xltek.read_raw_hdf5()."
+        )
         for k, v in s["provenance"].items():
             h.attrs["prov_" + k] = str(v)
-        h.create_dataset("counts", data=s["counts"], compression="gzip",
-                         compression_opts=4, shuffle=True, chunks=True)
-        h.create_dataset("factor_uV", data=s["factor_uV"])          # float64
-        h.create_dataset("covered", data=s["covered"].astype("u1"),
-                         compression="gzip")
+        h.create_dataset(
+            "counts",
+            data=s["counts"],
+            compression="gzip",
+            compression_opts=4,
+            shuffle=True,
+            chunks=True,
+        )
+        h.create_dataset("factor_uV", data=s["factor_uV"])  # float64
+        h.create_dataset("covered", data=s["covered"].astype("u1"), compression="gzip")
         h.create_dataset("ch_names", data=np.array(s["ch_names"], dtype="S32"))
         h.create_dataset("ch_types", data=np.array(s["ch_types"], dtype="S16"))
         h.create_dataset("ch_unit", data=np.array(s["ch_unit"], dtype="S16"))
@@ -387,6 +449,7 @@ def read_raw_hdf5(path):
     """Load the bit-exact HDF5 archive back into an ``mne.io.RawArray`` (identical
     to read_raw_xltek() on the original study)."""
     import h5py
+
     with h5py.File(path, "r") as h:
         md = h.attrs.get("meas_date", "")
         s = dict(
@@ -397,10 +460,14 @@ def read_raw_hdf5(path):
             ch_names=[x.decode() for x in h["ch_names"][()]],
             ch_types=[x.decode() for x in h["ch_types"][()]],
             meas_date=_dt.datetime.fromisoformat(md) if md else None,
-            annotations=list(zip(h["ann_onset"][()].tolist(),
-                                 h["ann_duration"][()].tolist(),
-                                 [x.decode() for x in h["ann_description"][()]],
-                                 strict=True)),
+            annotations=list(
+                zip(
+                    h["ann_onset"][()].tolist(),
+                    h["ann_duration"][()].tolist(),
+                    [x.decode() for x in h["ann_description"][()]],
+                    strict=True,
+                )
+            ),
         )
     return _raw_from_decoded(s)
 
@@ -411,19 +478,26 @@ def export_brainvision(study_or_raw, out_vhdr):
     amplifier's own resolution. Commas in note text are replaced with ';' so
     the .vmrk marker format (comma-delimited) stays valid."""
     import mne
+
     raw = study_or_raw if hasattr(study_or_raw, "info") else read_raw_xltek(study_or_raw)
     raw = raw.copy()
     if raw.annotations is not None and len(raw.annotations):
         desc = [d.replace(",", ";") for d in raw.annotations.description]
-        raw.set_annotations(mne.Annotations(
-            raw.annotations.onset, raw.annotations.duration, desc,
-            orig_time=raw.info["meas_date"]))
+        raw.set_annotations(
+            mne.Annotations(
+                raw.annotations.onset,
+                raw.annotations.duration,
+                desc,
+                orig_time=raw.info["meas_date"],
+            )
+        )
     mne.export.export_raw(str(out_vhdr), raw, fmt="brainvision", overwrite=True)
     return out_vhdr
 
 
 if __name__ == "__main__":
     import sys
+
     d = sys.argv[1] if len(sys.argv) > 1 else "."
     r = read_raw_xltek(d)
     print(r)

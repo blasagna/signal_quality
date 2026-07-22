@@ -4,6 +4,7 @@ This is the test that protects the block redesign. Blocks exist to bound memory;
 if they also shifted results, every metric would silently depend on a tuning
 parameter that has nothing to do with the signal.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,9 +16,15 @@ from signal_quality.core.blocks import filter_pad_samples, plan_blocks
 
 
 def ALL_METRICS():
-    return [M.RMS(), M.PeakToPeak(), M.FlatFraction(),
-            M.MaxCorrelation(), M.LineRatio(), M.EMGFraction(),
-            M.ClipFraction()]
+    return [
+        M.RMS(),
+        M.PeakToPeak(),
+        M.FlatFraction(),
+        M.MaxCorrelation(),
+        M.LineRatio(),
+        M.EMGFraction(),
+        M.ClipFraction(),
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -35,8 +42,9 @@ def test_block_size_does_not_change_results(demo, block_s):
     for col in ref.columns:
         a, b = ref[col].to_numpy(), got[col].to_numpy()
         both = np.isfinite(a) & np.isfinite(b)
-        np.testing.assert_allclose(b[both], a[both], rtol=1e-9, atol=1e-9,
-                                   err_msg=f"{col} changed with block size")
+        np.testing.assert_allclose(
+            b[both], a[both], rtol=1e-9, atol=1e-9, err_msg=f"{col} changed with block size"
+        )
         np.testing.assert_array_equal(np.isnan(a), np.isnan(b))
 
 
@@ -50,8 +58,7 @@ def test_a_lower_highpass_needs_more_padding(demo):
     grid = sq.IntervalGrid.fixed(demo, 1.0)
     ref = sq.compute([metric], demo, grid, block_s=1e9).table["rms"]
     got = sq.compute([metric], demo, grid, block_s=10.0).table["rms"]
-    np.testing.assert_allclose(got.to_numpy(), ref.to_numpy(), rtol=1e-8,
-                               atol=1e-8)
+    np.testing.assert_allclose(got.to_numpy(), ref.to_numpy(), rtol=1e-8, atol=1e-8)
 
 
 def test_analysis_window_padding_is_additive(demo):
@@ -75,7 +82,7 @@ def test_metrics_only_see_samples_inside_the_loaded_view(demo):
 
     ctx = MetricContext(demo, None)
     ctx.set_view(1000, 2000)
-    ctx.segment(1200, 1300)                      # inside: fine
+    ctx.segment(1200, 1300)  # inside: fine
     with pytest.raises(ValueError, match="outside the loaded view"):
         ctx.segment(500, 600)
 
@@ -93,8 +100,7 @@ def test_view_change_drops_cached_arrays(demo):
 
 def test_blocks_cover_every_interval_exactly_once(demo):
     grid = sq.IntervalGrid.fixed(demo, 1.0)
-    blocks = plan_blocks(grid, demo.n_times, pad=100, block_s=7.0,
-                         sfreq=demo.sfreq)
+    blocks = plan_blocks(grid, demo.n_times, pad=100, block_s=7.0, sfreq=demo.sfreq)
     seen = [i for b in blocks for i in b.interval_ids]
     assert sorted(seen) == sorted(grid.table.index)
     assert len(seen) == len(set(seen))

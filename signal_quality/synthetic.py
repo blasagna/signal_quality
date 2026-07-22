@@ -12,6 +12,7 @@ cortical activity.
 
     rec, truth = make_demo_recording()
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -27,8 +28,27 @@ RAIL = 131071  # 2**17 - 1
 #: Standard 10-20 sites, the extended/inferior chain, ears, and two aux
 #: channels. The extended electrodes are the ones that go wrong in practice —
 #: they are harder to apply and are exactly where mains pickup shows up.
-CORE_1020 = ["Fp1", "Fp2", "F3", "F4", "C3", "C4", "P3", "P4", "O1", "O2",
-             "F7", "F8", "T3", "T4", "T5", "T6", "Fz", "Cz", "Pz"]
+CORE_1020 = [
+    "Fp1",
+    "Fp2",
+    "F3",
+    "F4",
+    "C3",
+    "C4",
+    "P3",
+    "P4",
+    "O1",
+    "O2",
+    "F7",
+    "F8",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "Fz",
+    "Cz",
+    "Pz",
+]
 EXTENDED = ["F9", "F10", "T9", "T10", "P9", "P10", "Fpz"]
 EARS = ["A1", "A2"]
 AUX = ["ECGL", "OSAT"]
@@ -68,9 +88,14 @@ def _alpha(rng, n_ch, n, sfreq, freq=10.0):
     return np.sin(2 * np.pi * freq * t + phase) * np.abs(envelope)
 
 
-def make_demo_recording(seed: int = 0, duration: float = 180.0,
-                        sfreq: float = 250.0, line_freq: float = 60.0,
-                        with_gap: bool = True, with_stamp_fault: bool = True):
+def make_demo_recording(
+    seed: int = 0,
+    duration: float = 180.0,
+    sfreq: float = 250.0,
+    line_freq: float = 60.0,
+    with_gap: bool = True,
+    with_stamp_fault: bool = True,
+):
     """Build a demo :class:`~signal_quality.core.recording.Recording`.
 
     Returns ``(rec, truth)``. ``truth`` is a **time-resolved** ground truth —
@@ -116,7 +141,7 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     X = _pink(rng, n_ch, n, sfreq)
     X /= X.std(axis=1, keepdims=True)
     X = 0.30 * X + 0.95 * common
-    X *= 20.0 / X.std(axis=1, keepdims=True)          # ~20 µV RMS
+    X *= 20.0 / X.std(axis=1, keepdims=True)  # ~20 µV RMS
 
     # Per-site gain variation. Without it every healthy channel has almost
     # exactly the same amplitude, the median absolute deviation collapses, and
@@ -139,9 +164,14 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     truth = []
 
     def mark(ch, fault, t0=0.0, t1=None):
-        truth.append(dict(channel=ch, t_start=float(t0),
-                          t_end=float(duration if t1 is None else t1),
-                          injected=fault))
+        truth.append(
+            dict(
+                channel=ch,
+                t_start=float(t0),
+                t_end=float(duration if t1 is None else t1),
+                injected=fault,
+            )
+        )
 
     def span(t0, t1):
         return slice(int(t0 * sfreq), int(t1 * sfreq))
@@ -151,32 +181,38 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     # real poorly-applied electrodes on the reference study (~11,000 against
     # <900 for clean ones), so the demo exercises the shipped thresholds rather
     # than a softer set of its own.
-    for ch, amp in (("F9", 78.0), ("F10", 72.0), ("T9", 90.0),
-                    ("T10", 66.0), ("P9", 75.0), ("P10", 60.0)):
+    for ch, amp in (
+        ("F9", 78.0),
+        ("F10", 72.0),
+        ("T9", 90.0),
+        ("T10", 66.0),
+        ("P9", 75.0),
+        ("P10", 60.0),
+    ):
         i = names.index(ch)
         X[i] += amp * np.sin(2 * np.pi * line_freq * t + rng.uniform(0, 6.28))
         mark(ch, "LINE_NOISE")
 
-    i = names.index("C3")                              # attenuated contact
+    i = names.index("C3")  # attenuated contact
     X[i] *= 0.18
     mark("C3", "AMP_OUTLIER")
 
-    i = names.index("T5")                              # dead electrode
+    i = names.index("T5")  # dead electrode
     X[i] = 0.0
     mark("T5", "FLAT")
 
-    i = names.index("OSAT")                            # never recorded
+    i = names.index("OSAT")  # never recorded
     X[i] = 0.0
     mark("OSAT", "FLAT")
 
-    i = names.index("A1")                              # floating / isolated
+    i = names.index("A1")  # floating / isolated
     A1 = _pink(rng, 1, n, sfreq)[0]
     # Matched to the montage's typical amplitude, so this channel is isolated
     # and *only* isolated — keeping the injected faults separable.
     X[i] = A1 / A1.std() * float(np.median(np.abs(X).std(axis=1)))
     mark("A1", "ISOLATED")
 
-    for ch in ("F7", "F8"):                            # muscle contamination
+    for ch in ("F7", "F8"):  # muscle contamination
         i = names.index(ch)
         # Scaled to this channel's own amplitude: EMG *fraction* is what the
         # metric measures, so a fixed µV level would land differently on every
@@ -197,7 +233,7 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
         # Peak only just past the rail, so the excursion's tip clips rather
         # than most of its length.
         bump = np.hanning(w) * rng.choice([-1.0, 1.0]) * rail_uV * 1.08
-        X[i, s:s + w] += bump
+        X[i, s : s + w] += bump
     mark("Fpz", "AMP_OUTLIER")
     mark("Fpz", "CLIPPING")
 
@@ -214,7 +250,8 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     t0, t1 = ep["pop"]
     i = names.index("Fp1")
     X[i, span(t0, t1)] += 78.0 * np.sin(
-        2 * np.pi * line_freq * t[span(t0, t1)] + rng.uniform(0, 6.28))
+        2 * np.pi * line_freq * t[span(t0, t1)] + rng.uniform(0, 6.28)
+    )
     mark("Fp1", "LINE_NOISE", t0, t1)
 
     # A movement/muscle episode across several channels at once — the signature
@@ -223,17 +260,19 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     for ch in ("O1", "O2", "Pz"):
         i = names.index(ch)
         seg = span(t0, t1)
-        X[i, seg] += 1.1 * X[i].std() * _band_noise(
-            rng, n, sfreq, 25.0, 45.0)[seg]
-        X[i, seg] += 220.0 * _pink(rng, 1, n, sfreq, exponent=2.0)[0][seg] / (
-            _pink(rng, 1, n, sfreq, exponent=2.0)[0].std() + 1e-12)
+        X[i, seg] += 1.1 * X[i].std() * _band_noise(rng, n, sfreq, 25.0, 45.0)[seg]
+        X[i, seg] += (
+            220.0
+            * _pink(rng, 1, n, sfreq, exponent=2.0)[0][seg]
+            / (_pink(rng, 1, n, sfreq, exponent=2.0)[0].std() + 1e-12)
+        )
         mark(ch, "ARTIFACT", t0, t1)
 
     # A brief saturating burst: fine before and after.
     t0, t1 = ep["burst"]
     i = names.index("T4")
-    sl = span(t0, t1)                       # length from the slice, not recomputed:
-    w = sl.stop - sl.start                  # the two round differently
+    sl = span(t0, t1)  # length from the slice, not recomputed:
+    w = sl.stop - sl.start  # the two round differently
     X[i, sl] += np.hanning(w) * (RAIL * FACTOR_UV) * 1.1
     mark("T4", "CLIPPING", t0, t1)
 
@@ -246,7 +285,7 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     # --- quantise to ADC counts, which is where clipping actually happens ----
     factor_uV = np.full(n_ch, FACTOR_UV)
     counts = np.clip(np.rint(X / factor_uV[:, None]), -RAIL, RAIL).astype(np.int32)
-    signal = counts.astype(np.float64) * factor_uV[:, None] * 1e-6   # -> volts
+    signal = counts.astype(np.float64) * factor_uV[:, None] * 1e-6  # -> volts
 
     # --- recording-scope faults ---------------------------------------------
     covered = np.ones(n, dtype=bool)
@@ -261,10 +300,18 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     ch_types = ["eeg"] * (len(CORE_1020) + len(EXTENDED) + len(EARS))
     ch_types += ["ecg", "misc"]
 
-    ds = build_dataset(signal, sfreq, names, ch_types,
-                       ch_units=["uV"] * n_ch, counts=counts,
-                       factor_uV=factor_uV, covered=covered,
-                       meas_date=None, line_freq=line_freq)
+    ds = build_dataset(
+        signal,
+        sfreq,
+        names,
+        ch_types,
+        ch_units=["uV"] * n_ch,
+        counts=counts,
+        factor_uV=factor_uV,
+        covered=covered,
+        meas_date=None,
+        line_freq=line_freq,
+    )
 
     provenance = {"reader": "synthetic", "seed": seed, "first_stamp": 0}
     if with_stamp_fault:
@@ -273,9 +320,9 @@ def make_demo_recording(seed: int = 0, duration: float = 180.0,
     ann = pd.DataFrame(annotations, columns=["onset", "duration", "description"])
     rec = Recording(ds, None, ann, provenance, defects=[])
 
-    truth_df = pd.DataFrame(
-        truth, columns=["channel", "t_start", "t_end", "injected"]
-    ).sort_values(["channel", "t_start"], ignore_index=True)
+    truth_df = pd.DataFrame(truth, columns=["channel", "t_start", "t_end", "injected"]).sort_values(
+        ["channel", "t_start"], ignore_index=True
+    )
     return rec, truth_df
 
 
@@ -301,9 +348,15 @@ def _stamp_table(n, sfreq, covered):
     anomaly, since it is already reported as missing data — and one packet
     carries a stamp that jumps backwards, which must be.
     """
-    dt = np.dtype([("offset", "<i4"), ("samplestamp", "<i4"),
-                   ("sample_num", "<i4"), ("sample_span", "<i2"),
-                   ("unknown", "<i2")])
+    dt = np.dtype(
+        [
+            ("offset", "<i4"),
+            ("samplestamp", "<i4"),
+            ("sample_num", "<i4"),
+            ("sample_span", "<i2"),
+            ("unknown", "<i2"),
+        ]
+    )
     span = 250
     edges = np.diff(covered.astype(np.int8))
     starts = np.where(edges == -1)[0] + 1
@@ -311,8 +364,7 @@ def _stamp_table(n, sfreq, covered):
     g0 = int(starts[0]) if len(starts) else n
     g1 = int(ends[0]) if len(ends) else n
 
-    stamps = np.concatenate([np.arange(0, g0 - span, span),
-                             np.arange(g1, n - span, span)])
+    stamps = np.concatenate([np.arange(0, g0 - span, span), np.arange(g1, n - span, span)])
     etc = np.zeros(len(stamps), dtype=dt)
     etc["samplestamp"] = stamps
     etc["sample_span"] = span

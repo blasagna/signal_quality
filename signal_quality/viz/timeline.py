@@ -1,4 +1,5 @@
 """Time-axis views: what data exists, and when quality changed."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -27,16 +28,27 @@ def plot_availability(rec, issues=None, ax=None, title=None):
     for st in starts:
         nxt = np.where(edges[st:] == 1)[0]
         end = st + (nxt[0] + 1 if len(nxt) else len(cov) - st)
-        ax.broken_barh([(st / rec.sfreq, (end - st) / rec.sfreq)],
-                       (0.35, 0.65), facecolors="#c62828")
+        ax.broken_barh(
+            [(st / rec.sfreq, (end - st) / rec.sfreq)], (0.35, 0.65), facecolors="#c62828"
+        )
 
     if issues is not None and len(issues):
-        clock = issues[issues["check"].isin(
-            ["nonmonotonic_time", "irregular_sampling", "overlapping_packets",
-             "segment_inconsistent"])]
+        clock = issues[
+            issues["check"].isin(
+                [
+                    "nonmonotonic_time",
+                    "irregular_sampling",
+                    "overlapping_packets",
+                    "segment_inconsistent",
+                ]
+            )
+        ]
         for _, r in clock.iterrows():
-            ax.broken_barh([(r["t_start"], max(r["t_end"] - r["t_start"], total * 0.002))],
-                           (0.05, 0.22), facecolors="#f9a825")
+            ax.broken_barh(
+                [(r["t_start"], max(r["t_end"] - r["t_start"], total * 0.002))],
+                (0.05, 0.22),
+                facecolors="#f9a825",
+            )
         if len(clock):
             ax.text(0, 0.16, " clock ", va="center", ha="right", fontsize=7)
 
@@ -45,8 +57,11 @@ def plot_availability(rec, issues=None, ax=None, title=None):
     ax.set_yticks([])
     ax.set_xlabel("time (s)")
     missing = 100 * (1 - cov.mean())
-    ax.set_title(title or f"Data availability — {missing:.1f}% missing "
-                          "(green = data, red = gap, amber = clock anomaly)")
+    ax.set_title(
+        title
+        or f"Data availability — {missing:.1f}% missing "
+        "(green = data, red = gap, amber = clock anomaly)"
+    )
     return ax
 
 
@@ -62,8 +77,9 @@ def _mask_uncovered(series, table, min_coverage: float = 0.5):
     return series.where(cov.reindex(series.index) >= min_coverage)
 
 
-def plot_metric_trend(mf, metric: str, rec=None, ax=None, agg="median",
-                      threshold=None, title=None, logy="auto"):
+def plot_metric_trend(
+    mf, metric: str, rec=None, ax=None, agg="median", threshold=None, title=None, logy="auto"
+):
     """A metric over time, aggregated across channels per interval.
 
     Only meaningful on a windowed grid — with ``IntervalGrid.whole`` there is a
@@ -97,8 +113,7 @@ def plot_metric_trend(mf, metric: str, rec=None, ax=None, agg="median",
         ax.set_yscale("log")
 
     if threshold is not None:
-        ax.axhline(threshold, color="crimson", ls="--", lw=0.9,
-                   label=f"threshold {threshold:g}")
+        ax.axhline(threshold, color="crimson", ls="--", lw=0.9, label=f"threshold {threshold:g}")
         ax.legend(fontsize=8)
 
     if rec is not None:
@@ -107,18 +122,15 @@ def plot_metric_trend(mf, metric: str, rec=None, ax=None, agg="median",
         for st in np.where(edges == -1)[0] + 1:
             nxt = np.where(edges[st:] == 1)[0]
             end = st + (nxt[0] + 1 if len(nxt) else len(cov) - st)
-            ax.axvspan(st / rec.sfreq / 60, end / rec.sfreq / 60,
-                       color="grey", alpha=0.3)
+            ax.axvspan(st / rec.sfreq / 60, end / rec.sfreq / 60, color="grey", alpha=0.3)
 
     ax.set_xlabel("time (min)")
     label_with_range(ax, series.to_numpy(), f"{agg} {metric}")
-    ax.set_title(title or f"{metric} over time ({agg} across channels; "
-                          "grey = recording gap)")
+    ax.set_title(title or f"{metric} over time ({agg} across channels; grey = recording gap)")
     return ax
 
 
-def plot_clean_fraction(mf, rec=None, metric: str = "p2p",
-                        threshold: float = 150.0, ax=None):
+def plot_clean_fraction(mf, rec=None, metric: str = "p2p", threshold: float = 150.0, ax=None):
     """Fraction of channels under an artifact threshold, per interval.
 
     The movement-artifact trace: a recording can be perfectly continuous and
@@ -142,8 +154,7 @@ def plot_clean_fraction(mf, rec=None, metric: str = "p2p",
     ax.set_ylim(0, 101)
     ax.set_yticks([0, 25, 50, 75, 100])
     ax.set_xlabel("time (min)")
-    label_with_range(ax, frac.to_numpy(), f"% channels {metric} <= {threshold:g}",
-                     unit="%")
+    label_with_range(ax, frac.to_numpy(), f"% channels {metric} <= {threshold:g}", unit="%")
     ax.set_title(f"Artifact-free fraction over time ({metric} <= {threshold:g} µV)")
 
     if rec is not None:
@@ -152,6 +163,5 @@ def plot_clean_fraction(mf, rec=None, metric: str = "p2p",
         for st in np.where(edges == -1)[0] + 1:
             nxt = np.where(edges[st:] == 1)[0]
             end = st + (nxt[0] + 1 if len(nxt) else len(cov) - st)
-            ax.axvspan(st / rec.sfreq / 60, end / rec.sfreq / 60,
-                       color="grey", alpha=0.3)
+            ax.axvspan(st / rec.sfreq / 60, end / rec.sfreq / 60, color="grey", alpha=0.3)
     return ax

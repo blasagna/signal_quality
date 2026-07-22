@@ -10,6 +10,7 @@ fault.
 Missing data is not quality, and colouring a gap green would invite exactly the
 wrong conclusion.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -24,8 +25,7 @@ VERDICT_COLORS = {
 }
 
 
-def plot_quality_heatmap(verdicts, mf=None, ax=None, channels=None,
-                         title=None, time_unit="min"):
+def plot_quality_heatmap(verdicts, mf=None, ax=None, channels=None, title=None, time_unit="min"):
     """Verdict for every ``(channel, interval)`` as an image.
 
     ``mf`` supplies real interval times for the x axis; without it the axis is
@@ -54,8 +54,14 @@ def plot_quality_heatmap(verdicts, mf=None, ax=None, channels=None,
 
     if ax is None:
         _, ax = plt.subplots(figsize=(14, max(3.5, 0.22 * len(grid) + 1.5)))
-    ax.imshow(codes, aspect="auto", interpolation="nearest", cmap=cmap,
-              norm=norm, extent=[t0 / div, t1 / div, len(grid) - 0.5, -0.5])
+    ax.imshow(
+        codes,
+        aspect="auto",
+        interpolation="nearest",
+        cmap=cmap,
+        norm=norm,
+        extent=[t0 / div, t1 / div, len(grid) - 0.5, -0.5],
+    )
 
     ax.set_yticks(range(len(grid)))
     ax.set_yticklabels(grid.index, fontsize=7)
@@ -64,21 +70,30 @@ def plot_quality_heatmap(verdicts, mf=None, ax=None, channels=None,
 
     counts = verdicts["verdict"].value_counts()
     total = int(counts.sum())
-    ax.legend(handles=[
-        Patch(facecolor=VERDICT_COLORS[v], edgecolor="k", linewidth=0.4,
-              label=f"{v} ({100 * int(counts.get(v, 0)) / total:.1f}%)")
-        for v in reversed(VERDICT_LEVELS)],
-        loc="upper left", bbox_to_anchor=(1.005, 1.0), fontsize=8,
-        frameon=False)
+    ax.legend(
+        handles=[
+            Patch(
+                facecolor=VERDICT_COLORS[v],
+                edgecolor="k",
+                linewidth=0.4,
+                label=f"{v} ({100 * int(counts.get(v, 0)) / total:.1f}%)",
+            )
+            for v in reversed(VERDICT_LEVELS)
+        ],
+        loc="upper left",
+        bbox_to_anchor=(1.005, 1.0),
+        fontsize=8,
+        frameon=False,
+    )
 
     win = _window_s(mf, grid)
-    ax.set_title(title or f"Quality per channel over time "
-                          f"({win:g} s windows, {len(grid.columns)} of them)")
+    ax.set_title(
+        title or f"Quality per channel over time ({win:g} s windows, {len(grid.columns)} of them)"
+    )
     return ax
 
 
-def plot_flag_timeline(verdicts, mf=None, ax=None, title=None,
-                       time_unit="min"):
+def plot_flag_timeline(verdicts, mf=None, ax=None, title=None, time_unit="min"):
     """How many channels carry each flag, over time.
 
     Separates the two things a heatmap makes you squint for: a fault on one
@@ -90,13 +105,11 @@ def plot_flag_timeline(verdicts, mf=None, ax=None, title=None,
     if not len(verdicts):
         raise ValueError("no verdicts to plot")
 
-    exploded = (verdicts[verdicts["reasons"] != ""]["reasons"]
-                .str.split("+").explode())
+    exploded = verdicts[verdicts["reasons"] != ""]["reasons"].str.split("+").explode()
     if not len(exploded):
         raise ValueError("no flags fired; nothing to plot")
 
-    counts = (exploded.reset_index()
-              .groupby(["interval", "reasons"]).size().unstack(fill_value=0))
+    counts = exploded.reset_index().groupby(["interval", "reasons"]).size().unstack(fill_value=0)
 
     t = _interval_times(mf, counts.index)
     div = 60.0 if time_unit == "min" else 1.0
@@ -111,8 +124,10 @@ def plot_flag_timeline(verdicts, mf=None, ax=None, title=None,
     ax.set_xlabel(f"time ({time_unit})")
     ax.set_ylabel(f"channels flagged\nof {n_ch}")
     ax.legend(fontsize=8, ncol=min(4, len(counts.columns)))
-    ax.set_title(title or "Flags over time — a spike across many channels is an "
-                          "episode, not an electrode fault")
+    ax.set_title(
+        title
+        or "Flags over time — a spike across many channels is an episode, not an electrode fault"
+    )
     return ax
 
 

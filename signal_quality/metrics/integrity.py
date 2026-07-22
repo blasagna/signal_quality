@@ -10,6 +10,7 @@ The checks here are signal-agnostic: they ask whether the data exists, whether
 its clock makes sense, and whether its channels can be put on a common time
 axis, none of which depends on what was being measured.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -37,19 +38,28 @@ def coverage_gaps(rec, min_duration: float = 0.0) -> pd.DataFrame:
         if dur < min_duration:
             continue
         frac = dur / rec.duration
-        rows.append(dict(
-            check="data_gap",
-            severity="bad" if frac > 0.01 else "marginal",
-            t_start=onset, t_end=onset + dur, channel=None,
-            detail=f"{dur:.1f} s with no data ({100 * frac:.1f}% of the recording)",
-        ))
+        rows.append(
+            dict(
+                check="data_gap",
+                severity="bad" if frac > 0.01 else "marginal",
+                t_start=onset,
+                t_end=onset + dur,
+                channel=None,
+                detail=f"{dur:.1f} s with no data ({100 * frac:.1f}% of the recording)",
+            )
+        )
     missing = 1.0 - cov.mean()
     if missing > 0:
-        rows.append(dict(
-            check="coverage", severity="bad" if missing > 0.05 else "marginal",
-            t_start=0.0, t_end=rec.duration, channel=None,
-            detail=f"{100 * missing:.1f}% of the timeline has no data",
-        ))
+        rows.append(
+            dict(
+                check="coverage",
+                severity="bad" if missing > 0.05 else "marginal",
+                t_start=0.0,
+                t_end=rec.duration,
+                channel=None,
+                detail=f"{100 * missing:.1f}% of the timeline has no data",
+            )
+        )
     return _findings(rows)
 
 
@@ -73,24 +83,41 @@ def timestamp_anomalies(rec, jitter_tol: float = 1e-6) -> pd.DataFrame:
             if (dt <= 0).any():
                 n = int((dt <= 0).sum())
                 i = int(np.argmax(dt <= 0))
-                rows.append(dict(
-                    check="nonmonotonic_time", severity="bad",
-                    t_start=float(t[i]), t_end=float(t[min(i + 1, len(t) - 1)]),
-                    channel=None,
-                    detail=f"time coordinate decreases at {n} sample(s)"))
+                rows.append(
+                    dict(
+                        check="nonmonotonic_time",
+                        severity="bad",
+                        t_start=float(t[i]),
+                        t_end=float(t[min(i + 1, len(t) - 1)]),
+                        channel=None,
+                        detail=f"time coordinate decreases at {n} sample(s)",
+                    )
+                )
             spread = float(dt.max() - dt.min())
             if spread > jitter_tol:
-                rows.append(dict(
-                    check="irregular_sampling", severity="marginal",
-                    t_start=float(t[0]), t_end=float(t[-1]), channel=None,
-                    detail=f"sample period varies by {spread:.3e} s "
-                           f"(min {dt.min():.6f}, max {dt.max():.6f})"))
+                rows.append(
+                    dict(
+                        check="irregular_sampling",
+                        severity="marginal",
+                        t_start=float(t[0]),
+                        t_end=float(t[-1]),
+                        channel=None,
+                        detail=f"sample period varies by {spread:.3e} s "
+                        f"(min {dt.min():.6f}, max {dt.max():.6f})",
+                    )
+                )
         if not rows:
-            rows.append(dict(
-                check="timestamp_source", severity="info",
-                t_start=0.0, t_end=rec.duration, channel=None,
-                detail="no acquisition stamp table available; only the uniform "
-                       "time coordinate could be checked"))
+            rows.append(
+                dict(
+                    check="timestamp_source",
+                    severity="info",
+                    t_start=0.0,
+                    t_end=rec.duration,
+                    channel=None,
+                    detail="no acquisition stamp table available; only the uniform "
+                    "time coordinate could be checked",
+                )
+            )
         return _findings(rows)
 
     etc = np.asarray(stamps["etc"])
@@ -105,39 +132,56 @@ def timestamp_anomalies(rec, jitter_tol: float = 1e-6) -> pd.DataFrame:
 
     back = np.where(np.diff(ss) < 0)[0]
     if back.size:
-        rows.append(dict(
-            check="nonmonotonic_time", severity="bad",
-            t_start=float(ss[back[0]] / sf), t_end=float(ss[back[-1] + 1] / sf),
-            channel=None,
-            detail=f"{back.size} packet(s) have a sample stamp earlier than "
-                   f"their predecessor"))
+        rows.append(
+            dict(
+                check="nonmonotonic_time",
+                severity="bad",
+                t_start=float(ss[back[0]] / sf),
+                t_end=float(ss[back[-1] + 1] / sf),
+                channel=None,
+                detail=f"{back.size} packet(s) have a sample stamp earlier than their predecessor",
+            )
+        )
 
     step = np.diff(ss)
     declared = span[:-1]
     overlap = np.where(step < declared)[0]
     if overlap.size:
-        rows.append(dict(
-            check="overlapping_packets", severity="bad",
-            t_start=float(ss[overlap[0]] / sf),
-            t_end=float((ss[overlap[-1]] + span[overlap[-1]]) / sf), channel=None,
-            detail=f"{overlap.size} packet(s) start before the previous packet ends"))
+        rows.append(
+            dict(
+                check="overlapping_packets",
+                severity="bad",
+                t_start=float(ss[overlap[0]] / sf),
+                t_end=float((ss[overlap[-1]] + span[overlap[-1]]) / sf),
+                channel=None,
+                detail=f"{overlap.size} packet(s) start before the previous packet ends",
+            )
+        )
 
     # A stamp jump larger than the declared span is only a *clock* fault if it
     # is not simply the recording gap that coverage_gaps already reports.
     # Otherwise every gapped recording would also be accused of irregular
     # sampling, for the same underlying event.
-    irregular = [i for i in np.where(step > declared)[0]
-                 if not _is_known_gap(cov, ss[i] + span[i], ss[i + 1])]
+    irregular = [
+        i
+        for i in np.where(step > declared)[0]
+        if not _is_known_gap(cov, ss[i] + span[i], ss[i + 1])
+    ]
     if irregular:
-        gaps = (step - declared)
+        gaps = step - declared
         worst = int(max(irregular, key=lambda i: gaps[i]))
-        rows.append(dict(
-            check="irregular_sampling", severity="marginal",
-            t_start=float(ss[worst] / sf),
-            t_end=float(ss[worst + 1] / sf), channel=None,
-            detail=f"{len(irregular)} packet boundary/ies have a stamp gap larger "
-                   f"than the declared span, unexplained by a recording gap "
-                   f"(largest {gaps[worst] / sf:.3f} s)"))
+        rows.append(
+            dict(
+                check="irregular_sampling",
+                severity="marginal",
+                t_start=float(ss[worst] / sf),
+                t_end=float(ss[worst + 1] / sf),
+                channel=None,
+                detail=f"{len(irregular)} packet boundary/ies have a stamp gap larger "
+                f"than the declared span, unexplained by a recording gap "
+                f"(largest {gaps[worst] / sf:.3f} s)",
+            )
+        )
 
     stc = stamps.get("stc")
     if stc is not None and len(stc):
@@ -146,12 +190,16 @@ def timestamp_anomalies(rec, jitter_tol: float = 1e-6) -> pd.DataFrame:
         seg_end = int(stc["end_stamp"].max()) - beg
         pkt_end = int((ss + span).max())
         if abs(seg_end + 1 - pkt_end) > 1:
-            rows.append(dict(
-                check="segment_inconsistent", severity="marginal",
-                t_start=float(min(seg_end, pkt_end) / sf),
-                t_end=float(max(seg_end, pkt_end) / sf), channel=None,
-                detail=f"segment table ends at sample {seg_end + 1}, packet table "
-                       f"at {pkt_end}"))
+            rows.append(
+                dict(
+                    check="segment_inconsistent",
+                    severity="marginal",
+                    t_start=float(min(seg_end, pkt_end) / sf),
+                    t_end=float(max(seg_end, pkt_end) / sf),
+                    channel=None,
+                    detail=f"segment table ends at sample {seg_end + 1}, packet table at {pkt_end}",
+                )
+            )
 
     return _findings(rows)
 
@@ -177,11 +225,16 @@ def channel_alignment(rec) -> pd.DataFrame:
     rows = []
     for d in rec.defects or []:
         chans = d.get("channels")
-        rows.append(dict(
-            check=d.get("check", "reader_defect"), severity="bad",
-            t_start=0.0, t_end=rec.duration,
-            channel=(",".join(map(str, chans)) if chans else None),
-            detail=d.get("detail", "")))
+        rows.append(
+            dict(
+                check=d.get("check", "reader_defect"),
+                severity="bad",
+                t_start=0.0,
+                t_end=rec.duration,
+                channel=(",".join(map(str, chans)) if chans else None),
+                detail=d.get("detail", ""),
+            )
+        )
 
     # Channels that are constant for the whole recording carry no data at all,
     # as distinct from a channel that is merely flat some of the time.
@@ -189,19 +242,31 @@ def channel_alignment(rec) -> pd.DataFrame:
     if sig.shape[1] > 1:
         dead = np.ptp(sig, axis=1) == 0
         for name in np.asarray(rec.ch_names)[dead]:
-            rows.append(dict(
-                check="dead_channel", severity="bad",
-                t_start=0.0, t_end=rec.duration, channel=str(name),
-                detail="channel is exactly constant for the whole recording; "
-                       "no data was captured on it"))
+            rows.append(
+                dict(
+                    check="dead_channel",
+                    severity="bad",
+                    t_start=0.0,
+                    t_end=rec.duration,
+                    channel=str(name),
+                    detail="channel is exactly constant for the whole recording; "
+                    "no data was captured on it",
+                )
+            )
 
     n_named = len(rec.ch_names)
     n_sig = sig.shape[0]
     if n_named != n_sig:
-        rows.append(dict(
-            check="channel_count_mismatch", severity="bad",
-            t_start=0.0, t_end=rec.duration, channel=None,
-            detail=f"{n_named} channel names for {n_sig} signal rows"))
+        rows.append(
+            dict(
+                check="channel_count_mismatch",
+                severity="bad",
+                t_start=0.0,
+                t_end=rec.duration,
+                channel=None,
+                detail=f"{n_named} channel names for {n_sig} signal rows",
+            )
+        )
 
     return _findings(rows)
 
@@ -216,5 +281,4 @@ def check_integrity(rec, checks=None) -> pd.DataFrame:
     out = [f for f in out if len(f)]
     if not out:
         return _findings([])
-    return pd.concat(out, ignore_index=True).sort_values(
-        "t_start", ignore_index=True)
+    return pd.concat(out, ignore_index=True).sort_values("t_start", ignore_index=True)

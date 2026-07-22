@@ -12,6 +12,7 @@ the part unaffected by edge effects — is used. The padding is derived from the
 actual FIR length rather than guessed: a lower high-pass produces a
 proportionally longer filter, so any fixed constant would eventually be wrong.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,9 +28,9 @@ class Block:
     """One unit of work: intervals to compute, and the span to load for them."""
 
     interval_ids: list
-    i_start: int      # first sample of the intervals themselves
+    i_start: int  # first sample of the intervals themselves
     i_stop: int
-    view_start: int   # padded span actually loaded and filtered
+    view_start: int  # padded span actually loaded and filtered
     view_stop: int
 
     @property
@@ -52,8 +53,14 @@ def filter_pad_samples(sfreq: float, l_freq, h_freq) -> int:
     return int(len(np.atleast_1d(h)) // 2 + 1)
 
 
-def plan_blocks(grid, n_times: int, pad: int, block_s: float = DEFAULT_BLOCK_S,
-                sfreq: float = 1.0, min_view: int = 0) -> list[Block]:
+def plan_blocks(
+    grid,
+    n_times: int,
+    pad: int,
+    block_s: float = DEFAULT_BLOCK_S,
+    sfreq: float = 1.0,
+    min_view: int = 0,
+) -> list[Block]:
     """Group the grid's intervals into padded blocks.
 
     Intervals are never split across blocks — each is computed from one

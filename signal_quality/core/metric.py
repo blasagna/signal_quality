@@ -5,6 +5,7 @@ produces, and computes those columns over a grid of intervals. It knows nothing
 about thresholds — deciding whether a value is *bad* is the filters' job, so the
 same metric serves a strict and a lenient policy without modification.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -73,8 +74,7 @@ class Metric:
         Kept for single-metric use; :func:`compute` below is the block-aware
         path that several metrics should share.
         """
-        return compute([self], ctx.rec, grid, ch_type=None, _ctx=ctx).table[
-            self.columns]
+        return compute([self], ctx.rec, grid, ch_type=None, _ctx=ctx).table[self.columns]
 
     @staticmethod
     def _available(ctx, req: str) -> bool:
@@ -83,8 +83,9 @@ class Metric:
         return True
 
 
-def compute(metrics, rec, grid=None, ch_type: str | None = "eeg",
-            block_s: float | None = None, _ctx=None):
+def compute(
+    metrics, rec, grid=None, ch_type: str | None = "eeg", block_s: float | None = None, _ctx=None
+):
     """Compute several metrics over one grid and join them into one table.
 
     Because every metric is handed the same ``grid``, the returned frames share
@@ -116,20 +117,30 @@ def compute(metrics, rec, grid=None, ch_type: str | None = "eeg",
         if miss:
             missing[id(m)] = miss
             m.unavailable_reason = (
-                f"{m.name}: requires {', '.join(miss)}, not available from this "
-                f"source")
+                f"{m.name}: requires {', '.join(miss)}, not available from this source"
+            )
             notes.append(m.unavailable_reason)
 
     pad_s = max([m.required_pad_s(ctx.sfreq) for m in metrics] or [0.0])
     pad = int(np.ceil(pad_s * ctx.sfreq))
     # A view shorter than the filter itself would distort regardless of padding.
     min_view = 2 * max(
-        [filter_pad_samples(ctx.sfreq, *m.analysis_band()) for m in metrics
-         if m.analysis_band() is not None] or [0])
+        [
+            filter_pad_samples(ctx.sfreq, *m.analysis_band())
+            for m in metrics
+            if m.analysis_band() is not None
+        ]
+        or [0]
+    )
 
-    blocks = plan_blocks(grid, ctx.n_times, pad,
-                         block_s if block_s is not None else DEFAULT_BLOCK_S,
-                         sfreq=ctx.sfreq, min_view=min_view)
+    blocks = plan_blocks(
+        grid,
+        ctx.n_times,
+        pad,
+        block_s if block_s is not None else DEFAULT_BLOCK_S,
+        sfreq=ctx.sfreq,
+        min_view=min_view,
+    )
 
     # Accumulate each metric's per-interval output as plain (n_ch, n_cols)
     # ndarrays and assemble one DataFrame per metric at the end. Building a
@@ -155,13 +166,13 @@ def compute(metrics, rec, grid=None, ch_type: str | None = "eeg",
 
     n_iv = len(iid_order)
     index = pd.MultiIndex.from_arrays(
-        [np.tile(ctx.ch_names, n_iv), np.repeat(iid_order, n_ch)],
-        names=["channel", "interval"])
-    frames = [pd.DataFrame(np.concatenate(by_metric[id(m)], axis=0),
-                           columns=m.columns, index=index)
-              for m in metrics]
+        [np.tile(ctx.ch_names, n_iv), np.repeat(iid_order, n_ch)], names=["channel", "interval"]
+    )
+    frames = [
+        pd.DataFrame(np.concatenate(by_metric[id(m)], axis=0), columns=m.columns, index=index)
+        for m in metrics
+    ]
     table = pd.concat(frames, axis=1).sort_index()
-    meta = grid.table.reindex(
-        table.index.get_level_values("interval")).set_index(table.index)
+    meta = grid.table.reindex(table.index.get_level_values("interval")).set_index(table.index)
     table = pd.concat([meta[["t_start", "t_end", "coverage"]], table], axis=1)
     return MetricFrame(table, grid=grid, notes=notes)

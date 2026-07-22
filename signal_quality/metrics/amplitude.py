@@ -3,6 +3,7 @@
 Formulas are preserved from the reference analysis so results stay comparable;
 every constant that was inline there is a parameter here.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -52,7 +53,7 @@ class FlatFraction(Metric):
         n = seg.shape[1] // wl
         if n == 0:
             return np.full(seg.shape[0], np.nan)
-        blocks = seg[:, :n * wl].reshape(seg.shape[0], n, wl)
+        blocks = seg[:, : n * wl].reshape(seg.shape[0], n, wl)
         return (blocks.std(axis=2) < self.thresh).mean(axis=1)
 
 

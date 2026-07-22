@@ -1,4 +1,5 @@
 """Both scales of assessment, and the rule that keeps them from double-counting."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -36,8 +37,7 @@ def test_episodic_channels_are_not_condemned_outright(demo):
 def test_sustained_channels_are_found(demo):
     _, truth, r = demo
     eeg = set(r.metrics.table.index.get_level_values("channel"))
-    sustained_truth = {c for c in truth[truth["t_start"] <= 0]["channel"]
-                       if c in eeg}
+    sustained_truth = {c for c in truth[truth["t_start"] <= 0]["channel"] if c in eeg}
     # F7/F8 carry EMG, which is a marginal-severity flag by design and so is
     # not part of the bad-segment output.
     expected = sustained_truth - {"F7", "F8"}
@@ -48,23 +48,34 @@ def test_episodes_land_on_the_right_spans(demo):
     _, truth, r = demo
     ep = r.segments[r.segments["scope"] == "interval"]
     for row in truth[truth["t_start"] > 0].itertuples():
-        s = ep[(ep["channel"] == row.channel)
-               & (ep["t_end"] > row.t_start) & (ep["t_start"] < row.t_end)]
+        s = ep[
+            (ep["channel"] == row.channel)
+            & (ep["t_end"] > row.t_start)
+            & (ep["t_start"] < row.t_end)
+        ]
         assert len(s), f"no episode for {row.channel} at {row.t_start:.0f}s"
 
 
 # --- the drop rule -----------------------------------------------------------
 
+
 def _seg(ch, t0, t1, reasons="FLAT"):
-    return dict(channel=ch, t_start=t0, t_end=t1, duration=t1 - t0,
-                severity="bad", reasons=reasons, n_intervals=int(t1 - t0))
+    return dict(
+        channel=ch,
+        t_start=t0,
+        t_end=t1,
+        duration=t1 - t0,
+        severity="bad",
+        reasons=reasons,
+        n_intervals=int(t1 - t0),
+    )
 
 
 def test_a_concentrated_substantial_episode_explains_the_channel_flag():
     """One big artifact can shift a whole-recording statistic enough to condemn
     an otherwise fine channel; the episode already describes it better."""
     sustained = pd.DataFrame([_seg("C3", 0, 180)])
-    episodes = pd.DataFrame([_seg("C3", 60, 80)])          # 11% of 180 s
+    episodes = pd.DataFrame([_seg("C3", 60, 80)])  # 11% of 180 s
     out = _drop_episode_artifacts(sustained, episodes, duration=180.0)
     assert not len(out)
 
@@ -73,7 +84,7 @@ def test_a_tiny_episode_cannot_explain_a_channel_flag():
     """The reference study's purely-sustained channels had episodes covering
     0.1% of the recording — far too little to move a whole-recording number."""
     sustained = pd.DataFrame([_seg("C3", 0, 180)])
-    episodes = pd.DataFrame([_seg("C3", 60, 60.2)])        # 0.1%
+    episodes = pd.DataFrame([_seg("C3", 60, 60.2)])  # 0.1%
     out = _drop_episode_artifacts(sustained, episodes, duration=180.0)
     assert len(out) == 1
 
@@ -82,8 +93,7 @@ def test_scattered_episodes_keep_the_channel_flag():
     """A sustained defect that only trips per-second thresholds intermittently
     still fails seconds spread across the whole recording."""
     sustained = pd.DataFrame([_seg("A1", 0, 180)])
-    episodes = pd.DataFrame([_seg("A1", 5, 12), _seg("A1", 90, 96),
-                             _seg("A1", 160, 172)])
+    episodes = pd.DataFrame([_seg("A1", 5, 12), _seg("A1", 90, 96), _seg("A1", 160, 172)])
     out = _drop_episode_artifacts(sustained, episodes, duration=180.0)
     assert len(out) == 1
 
@@ -100,12 +110,14 @@ def test_flag_names_need_not_match_across_scales():
 
 def test_channel_with_no_episodes_is_always_kept():
     sustained = pd.DataFrame([_seg("C3", 0, 180)])
-    out = _drop_episode_artifacts(sustained, pd.DataFrame(columns=sustained.columns),
-                                  duration=180.0)
+    out = _drop_episode_artifacts(
+        sustained, pd.DataFrame(columns=sustained.columns), duration=180.0
+    )
     assert len(out) == 1
 
 
 # --- report shape ------------------------------------------------------------
+
 
 def test_excluded_time_covers_both_scopes(demo):
     _, _, r = demo
